@@ -36,15 +36,15 @@ class JKAnimeProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request : MainPageRequest): HomePageResponse {
         val urls = listOf(
             Pair(
-                "$mainUrl/directorio/?filtro=fecha&tipo=TV&estado=1&fecha=none&temporada=none&orden=desc",
+                "$mainUrl/directorio?estado=emision",
                 "En emisión"
             ),
             Pair(
-                "$mainUrl/directorio/animes/",
+                "$mainUrl/directorio?tipo=animes",
                 "Animes"
             ),
             Pair(
-                "$mainUrl/directorio/peliculas/",
+                "$mainUrl/directorio?tipo=peliculas",
                 "Películas"
             ),
         )
@@ -121,15 +121,13 @@ class JKAnimeProvider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val urls = listOf(
-            "$mainUrl/buscar/$query/1/",
-            "$mainUrl/buscar/$query/2/",
-            "$mainUrl/buscar/$query/3/"
+            "$mainUrl/buscar/$query"
         )
         val search = ArrayList<SearchResponse>()
         urls.apmap { ss ->
             val doc = app.get(ss).document
             doc.select("div.row div.anime__item").mapNotNull {
-                val title = it.selectFirst(".title")?.text() ?: ""
+                val title = it.selectFirst(".anime__item__text h5")?.text() ?: ""
                 val href = it.selectFirst("a")?.attr("href") ?: ""
                 val img = it.selectFirst(".set-bg")?.attr("data-setbg") ?: ""
                 val isDub = title.contains("Latino") || title.contains("Castellano")
