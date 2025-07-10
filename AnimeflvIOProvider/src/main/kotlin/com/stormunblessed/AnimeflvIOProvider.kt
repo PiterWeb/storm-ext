@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.getQualityFromName
@@ -60,7 +61,7 @@ class AnimeflvIOProvider:MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -116,7 +117,7 @@ class AnimeflvIOProvider:MainAPI() {
         val episodes = soup.select(".item-season-episodes a").map { li ->
             val href = fixUrl(li.selectFirst("a")?.attr("href") ?: "")
             val name = li.selectFirst("a")?.text() ?: ""
-            Episode(
+            newEpisode(
                 href, name,
             )
         }.reversed()
@@ -198,7 +199,7 @@ class AnimeflvIOProvider:MainAPI() {
                             headers = mapOf("Referer" to "https://animeid.to")
                         ).apmap {
                             callback(
-                                ExtractorLink(
+                                newExtractorLink(
                                     "Animeflv.io",
                                     "Animeflv.io",
                                     it.url,
@@ -210,7 +211,7 @@ class AnimeflvIOProvider:MainAPI() {
                         }
                     } else {
                         callback(
-                            ExtractorLink(
+                            newExtractorLink(
                                 name,
                                 "$name ${source.label}",
                                 source.file,

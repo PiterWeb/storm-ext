@@ -97,7 +97,7 @@ class AniwatchProvider : MainAPI() {
             if (animes.isNotEmpty()) homePageList.add(HomePageList(header, animes))
         }
 
-        return HomePageResponse(homePageList)
+        return newHomePageResponse (homePageList)
     }
 
     private data class Response(
@@ -626,7 +626,7 @@ class AniwatchProvider : MainAPI() {
         }
 
         // For re-use in Zoro
-        private suspend fun Sources.toExtractorLink(
+        private suspend fun Sources.tonewExtractorLink(
             caller: MainAPI,
             name: String,
             extractorData: String? = null,
@@ -647,7 +647,7 @@ class AniwatchProvider : MainAPI() {
                             ), false
                         )
                             .map { stream ->
-                                ExtractorLink(
+                                newExtractorLink(
                                     caller.name,
                                     "${caller.name} $name",
                                     stream.streamUrl,
@@ -659,7 +659,7 @@ class AniwatchProvider : MainAPI() {
                             }
                     }.takeIf { !it.isNullOrEmpty() } ?: listOf(
                         // Fallback if m3u8 extractor fails
-                        ExtractorLink(
+                        newExtractorLink(
                             caller.name,
                             "${caller.name} $name",
                             this.file,
@@ -671,7 +671,7 @@ class AniwatchProvider : MainAPI() {
                     )
                 } else {
                     listOf(
-                        ExtractorLink(
+                        newExtractorLink(
                             caller.name,
                             caller.name,
                             file,
@@ -826,7 +826,7 @@ class AniwatchProvider : MainAPI() {
 
             list.forEach { subList ->
                 subList.first?.forEach { source ->
-                    source?.toExtractorLink(
+                    source?.tonewExtractorLink(
                         this,
                         nameTransformer(subList.second),
                         extractorData,

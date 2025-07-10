@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.movieproviders
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class EntrepeliculasyseriesProvider : MainAPI() {
@@ -45,7 +46,7 @@ class EntrepeliculasyseriesProvider : MainAPI() {
             )
         }
 
-        return newHomePageResponse(request.name, home)
+        return newnewHomePageResponse (request.name, home)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -122,7 +123,7 @@ class EntrepeliculasyseriesProvider : MainAPI() {
             val isValid = seasonid.size == 2
             val episode = if (isValid) seasonid.getOrNull(1) else null
             val season = if (isValid) seasonid.getOrNull(0) else null
-            Episode(
+            newEpisode(
                 href,
                 null,
                 season,

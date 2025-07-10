@@ -56,7 +56,7 @@ class EstrenosDoramasProvider : MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -102,7 +102,7 @@ class EstrenosDoramasProvider : MainAPI() {
         val episodes = doc.select("div.post .lcp_catlist a").map {
             val name = it.selectFirst("a")?.text()
             val link = it.selectFirst("a")?.attr("href")
-            val test = Episode(link!!, name)
+            val test = newEpisode(link!!, name)
             if (!link.equals(url)) {
                 epi.add(test)
             }
@@ -154,7 +154,7 @@ class EstrenosDoramasProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         callback(
-            ExtractorLink(
+            newExtractorLink(
                 source,
                 name,
                 url,

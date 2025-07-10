@@ -3,6 +3,7 @@ package com.stormunblessed
 import android.util.Base64
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.JsUnpacker
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import java.net.URL
@@ -251,7 +252,7 @@ class CablevisionHdProvider : MainAPI() {
             items.add(HomePageList(name, home, true))
         }
 
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -350,7 +351,7 @@ class CablevisionHdProvider : MainAPI() {
                     val extractedurl = decodeBase64UntilUnchanged(hash)
                     if (extractedurl.isNotBlank()) {
                         callback(
-                                ExtractorLink(
+                                newExtractorLink(
                                         it.text() ?: getHostUrl(extractedurl),
                                         it.text() ?: getHostUrl(extractedurl),
                                         extractedurl,

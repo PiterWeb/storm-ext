@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -92,7 +93,7 @@ class JKAnimeProvider : MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     /* data class MainSearch(
@@ -171,7 +172,7 @@ class JKAnimeProvider : MainAPI() {
                 val imagetest = !info.image.isNullOrBlank()
                 val image = if (imagetest) "https://cdn.jkdesu.com/assets/images/animes/video/image_thumb/${info.image}" else null
                 val link = "${url.removeSuffix("/")}/${info.number}"
-                val ep = Episode(
+                val ep = newEpisode(
                     link,
                     posterUrl = image
                 )
@@ -201,7 +202,7 @@ class JKAnimeProvider : MainAPI() {
         m3u8: Boolean
     ): Boolean {
         callback(
-            ExtractorLink(
+            newExtractorLink(
                 name,
                 name,
                 url,

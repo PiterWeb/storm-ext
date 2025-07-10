@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.animeproviders
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.nicehttp.NiceResponse
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -93,7 +94,7 @@ class LatAnimeProvider : MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -134,7 +135,7 @@ class LatAnimeProvider : MainAPI() {
             val link = it!!.attr("href")
             val epThumb = it.selectFirst(".animeimghv")?.attr("data-src")
                     ?: it.selectFirst("div.animeimgdiv img.animeimghv")?.attr("src")
-            Episode(link, name)
+            newEpisode(link, name)
         }
         return newAnimeLoadResponse(title, url, getType(title)) {
             posterUrl = poster

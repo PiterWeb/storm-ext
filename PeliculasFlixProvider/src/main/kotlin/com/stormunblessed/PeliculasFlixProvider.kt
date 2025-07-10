@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
 import okhttp3.MediaType.Companion.toMediaType
@@ -105,7 +106,7 @@ class PeliculasFlixProvider:MainAPI() {
         }
         items.add(HomePageList("Peliculas", home!!))
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     private fun tasa(
@@ -186,7 +187,7 @@ class PeliculasFlixProvider:MainAPI() {
                 val file = fi?.file ?: ""
                 if (check) {
                     callback(
-                        ExtractorLink(
+                        newExtractorLink(
                             this.name,
                             this.name,
                             file,

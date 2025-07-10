@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -143,7 +144,7 @@ class DoramasFlixProvider:MainAPI() {
         items.add(HomePageList("Peliculas", home2!!))
         items.add(HomePageList("Doramas 2", home3!!))
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     private fun tasa(
@@ -225,7 +226,7 @@ class DoramasFlixProvider:MainAPI() {
                     val epthumb = getImageUrl(it.stillPath)
                     val name = it.name
                     episodes.add(
-                        Episode(
+                        newEpisode(
                             epSlug!!,
                             name,
                             season,

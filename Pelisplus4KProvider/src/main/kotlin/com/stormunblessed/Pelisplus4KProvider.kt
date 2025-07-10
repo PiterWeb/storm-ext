@@ -3,6 +3,7 @@ package com.stormunblessed
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class Pelisplus4KProvider :MainAPI() {
@@ -44,7 +45,7 @@ class Pelisplus4KProvider :MainAPI() {
             }
             items.add(HomePageList(name, home))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -94,7 +95,7 @@ class Pelisplus4KProvider :MainAPI() {
                         val realimg = if (img == null) null else if (img.isEmpty() == true) null else "https://image.tmdb.org/t/p/w342${img.replace("\\/", "/")}"
                         val epurl = "$url/season/$seasonNum/episode/$epNum"
                         epi.add(
-                            Episode(
+                            newEpisode(
                                 epurl,
                                 epTitle,
                                 seasonNum,

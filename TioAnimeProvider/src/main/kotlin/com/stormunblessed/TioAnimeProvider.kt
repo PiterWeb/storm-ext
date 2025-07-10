@@ -75,7 +75,7 @@ class TioAnimeProvider:MainAPI() {
             items.add(HomePageList(name, home))
         }
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     data class SearchObject (
@@ -129,7 +129,7 @@ class TioAnimeProvider:MainAPI() {
                 data.split("],").forEach {
                     it.split(",").forEach { epNum ->
                         val link = url.replace("/anime/","/ver/")+"-$epNum"
-                        episodes.add( Episode(
+                        episodes.add( newEpisode(
                             link,
                             "Capítulo $epNum",
                             posterUrl = null,

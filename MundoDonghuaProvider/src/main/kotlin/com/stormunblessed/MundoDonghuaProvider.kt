@@ -3,6 +3,7 @@ package com.stormunblessed
 import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getAndUnpack
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -68,7 +69,7 @@ class MundoDonghuaProvider : MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -110,7 +111,7 @@ class MundoDonghuaProvider : MainAPI() {
             val link = it.attr("href")
             val epnum = epNumRegex.find(link)?.destructured?.component1()
             newEpisodes.add(
-                Episode(
+                newEpisode(
                     fixUrl(link),
                     episode = epnum.toString().toIntOrNull()
                 )
@@ -121,7 +122,7 @@ class MundoDonghuaProvider : MainAPI() {
             if (href?.contains(slug) == true) {
                 val epnum = epNumRegex.find(href)?.destructured?.component1()
                 newEpisodes.add(
-                    Episode(
+                    newEpisode(
                         fixUrl(href),
                         episode = epnum.toString().toIntOrNull()
                     )

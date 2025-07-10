@@ -2,6 +2,7 @@ package com.stormunblessed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import org.jsoup.nodes.Document
 
@@ -33,7 +34,7 @@ class LACartoonsProvider:MainAPI() {
         val soup = app.get(mainUrl).document
         val home = soup.toSearchResult()
         items.add(HomePageList("Series", home))
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
     override suspend fun search(query: String): List<SearchResponse> {
         val doc = app.get("$mainUrl/?utf8=✓&Titulo=$query").document
@@ -53,7 +54,7 @@ class LACartoonsProvider:MainAPI() {
             val name = it.selectFirst("a")?.text()?.replace(regexep, "")?.replace("-","")
             val seasonnum = href?.substringAfter("t=")
             val epnum = regexep.find(name.toString())?.destructured?.component1()
-            Episode(
+            newEpisode(
                 fixUrl(href!!),
                 name,
                 seasonnum.toString().toIntOrNull(),

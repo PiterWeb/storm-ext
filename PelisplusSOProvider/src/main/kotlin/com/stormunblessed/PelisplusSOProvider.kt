@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.movieproviders
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import org.jsoup.Jsoup
@@ -62,7 +63,7 @@ class PelisplusSOProvider : MainAPI() {
         })
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -130,7 +131,7 @@ class PelisplusSOProvider : MainAPI() {
             val isValid = seasonid.size == 2
             val episode = if (isValid) seasonid.getOrNull(1) else null
             val season = if (isValid) seasonid.getOrNull(0) else null
-            Episode(
+            newEpisode(
                     href,
                     epTitle,
                     season = season,
@@ -197,7 +198,7 @@ class PelisplusSOProvider : MainAPI() {
                 mainUrl,
         ).apmap {
             callback(
-                    ExtractorLink(
+                    newExtractorLink(
                             name,
                             "$name $lang",
                             it.url,

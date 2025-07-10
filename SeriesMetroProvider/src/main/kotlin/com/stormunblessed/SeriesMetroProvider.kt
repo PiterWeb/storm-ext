@@ -2,6 +2,7 @@ package com.stormunblessed
 
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class SeriesMetroProvider: MainAPI() {
@@ -62,7 +63,7 @@ class SeriesMetroProvider: MainAPI() {
             }
             items.add(HomePageList(name, home))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -122,7 +123,7 @@ class SeriesMetroProvider: MainAPI() {
                 val isValid = seasonid.size == 2
                 val episode = if (isValid) seasonid.getOrNull(1) else null
                 val seasonint = if (isValid) seasonid.getOrNull(0) else null
-                episodes.add(Episode(
+                episodes.add(newEpisode(
                     link,
                     season = seasonint,
                     episode = episode

@@ -10,6 +10,7 @@ import com.fasterxml.jackson.module.kotlin.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.tryParseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -52,7 +53,7 @@ class AnimensionProvider:MainAPI() {
             }
             items.add(HomePageList(name, home))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -86,7 +87,7 @@ class AnimensionProvider:MainAPI() {
             val epid = it[1]
             val epnum = it[2]
             val epinfo = "$mainUrl/public-api/episode.php?id=$epid"
-            Episode(
+            newEpisode(
                 epinfo,
                 episode = epnum.toString().toIntOrNull()
             )
@@ -141,7 +142,7 @@ class AnimensionProvider:MainAPI() {
             else if (link.contains(Regex("mp4\$")))
             {
                 callback(
-                    ExtractorLink(
+                    newExtractorLink(
                         this.name,
                         "${this.name} MP4",
                         link,

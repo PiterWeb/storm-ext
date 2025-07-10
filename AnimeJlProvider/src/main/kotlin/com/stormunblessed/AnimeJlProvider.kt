@@ -3,6 +3,7 @@ package com.stormunblessed
 import android.util.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 
@@ -44,7 +45,7 @@ class AnimeJlProvider : MainAPI() {
             }
             items.add(HomePageList(name, home))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -99,7 +100,7 @@ class AnimeJlProvider : MainAPI() {
                     }
                 }
                 episodes.add(
-                    Episode(
+                    newEpisode(
                         epurl,
                         epTitle,
                         0,

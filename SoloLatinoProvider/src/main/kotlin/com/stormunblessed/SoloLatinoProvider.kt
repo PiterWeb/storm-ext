@@ -4,6 +4,7 @@ import android.util.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 
 class SoloLatinoProvider : MainAPI() {
@@ -52,7 +53,7 @@ class SoloLatinoProvider : MainAPI() {
             }
             items.add(HomePageList(name, home))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
@@ -100,7 +101,7 @@ class SoloLatinoProvider : MainAPI() {
                             it.trim().toIntOrNull()
                         }
                     val realimg = it.selectFirst("div.imagen img")?.attr("src")
-                    Episode(
+                    newEpisode(
                         epurl,
                         epTitle,
                         seasonEpisodeNumber?.getOrNull(0),

@@ -73,7 +73,7 @@ class AniwaveProvider : MainAPI() {
             }
         }
 
-        return newHomePageResponse(request.name, home, true)
+        return newnewHomePageResponse (request.name, home, true)
     }
 
     data class Response(
@@ -125,7 +125,7 @@ class AniwaveProvider : MainAPI() {
            val epTitle = this.selectFirst("span.d-title")?.text()
            val epurl = "$url/ep-$epNum"
            val data = "{\"llaa\":\"null\",\"epurl\":\"$epurl\",\"needDUB\":$needDub}"
-          return Episode(
+          return newEpisode(
                data,
                epTitle,
                episode = epNum
@@ -353,7 +353,7 @@ class AniwaveProvider : MainAPI() {
                referer
            ).map {
                callback(
-                   ExtractorLink(
+                   newExtractorLink(
                        ""
                    )
                )

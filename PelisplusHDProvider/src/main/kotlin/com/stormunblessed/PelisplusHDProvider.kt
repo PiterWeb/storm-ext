@@ -3,6 +3,7 @@ package com.lagradost.cloudstream3.movieproviders
 import android.webkit.URLUtil
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -36,7 +37,7 @@ class PelisplusHDProvider:MainAPI() {
                 }
             ))
         }
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
     private fun Element.toSearchResult(): SearchResponse {
         val title = this.select(".listing-content p").text()
@@ -115,7 +116,7 @@ class PelisplusHDProvider:MainAPI() {
             val isValid = seasonid?.size == 2
             val episode = if (isValid) seasonid?.getOrNull(1) else null
             val season = if (isValid) seasonid?.getOrNull(0) else null
-            Episode(
+            newEpisode(
                 href!!,
                 name,
                 season,

@@ -5,6 +5,7 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import java.util.*
 import kotlin.collections.ArrayList
@@ -88,7 +89,7 @@ class ComamosRamenProvider : MainAPI() {
         }
 
         if (items.size <= 0) throw ErrorLoadingException()
-        return HomePageResponse(items)
+        return newHomePageResponse (items)
     }
 
     data class SearchOb (
@@ -226,7 +227,7 @@ class ComamosRamenProvider : MainAPI() {
             val seasonID = seasons.season
             seasons.episodes.map { episodes ->
                 val epnum = episodes.episode
-                epi.add(Episode(
+                epi.add(newEpisode(
                     "$mainUrl/v/$movieID/${title?.replace(" ","-")}/$seasonID-$epnum",
                     season =seasonID,
                     episode = epnum,
