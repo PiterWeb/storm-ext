@@ -33,7 +33,7 @@ class CineHdPlusProvider : MainAPI() {
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val document = app.get("$mainUrl/${request.data}/page/$page").document
-        val home = document.select("div.container main div.card__cover:not(.placebo)")
+        val home = document.select("div.grid a")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(
             list = HomePageList(
@@ -46,9 +46,9 @@ class CineHdPlusProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse {
-        val title = this.select("a img").attr("alt")
-        val href = this.select("a").attr("href")
-        val posterUrl = fixUrlNull(this.select("a img").attr("src"))
+        val title = this.select("img").attr("alt")
+        val href = this.attr("href").takeIf{ !it.isNullOrEmpty()} ?: this.select("a").attr("href")
+        val posterUrl = fixUrlNull(this.select("img").attr("src"))
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
         }
@@ -57,27 +57,27 @@ class CineHdPlusProvider : MainAPI() {
     override suspend fun search(query: String): List<SearchResponse> {
         val document = app.get("${mainUrl}/?s=$query").document
         val results =
-            document.select("div.container div.card__cover").mapNotNull { it.toSearchResult() }
+            document.select("div.grid div.group").mapNotNull { it.toSearchResult() }
         return results
     }
 
     override suspend fun load(url: String): LoadResponse? {
         val doc = app.get(url).document
-        val tvType = if (url.contains("/peliculas")) TvType.Movie else TvType.TvSeries
-        val title = doc.selectFirst(".details__title h1")?.text()
+        val tvType = if (url.contains("/pelicula-")) TvType.Movie else TvType.TvSeries
+        val title = doc.selectFirst(".sm\\:text-2xl")?.text()
         val plot = doc.selectFirst("head meta[property=og:description]")?.attr("content")
         val year = doc.selectFirst(".sub-meta span[itemprop=dateCreated]")?.text()?.toIntOrNull()
-        val poster = doc.selectFirst(".details__cover figure img")?.attr("data-src")
-        val backimage = doc.selectFirst("section.section div.backdrop img")?.attr("src")
+        val poster = doc.selectFirst("img.absolute")?.attr("src")
+        val backimage = doc.selectFirst(".opacity-20")?.attr("src")
         val tags = doc.selectFirst(".details__list li")?.text()?.substringAfter(":")?.split(",")
         val trailer = doc.selectFirst("#OptYt iframe")?.attr("data-src")?.replaceFirst("https://www.youtube.com/embed/","https://www.youtube.com/watch?v=")
-        val recommendations = doc.select("div.container div.card__cover").mapNotNull { it.toSearchResult() }
-        val episodes = doc.select("div.tab-content div.episodios-todos").flatMap {
-            val season = it.attr("id").replaceFirst("season-", "").toIntOrNull()
-            it.select(".episodios_list li").mapIndexed { idx, it ->
+        val recommendations = doc.select("div.grid-cols-2:nth-child(2) a").mapNotNull { it.toSearchResult() }
+        val episodes = doc.select("div.season-pane").flatMap {
+            val season = it.attr("id").replaceFirst("season-content-", "").toIntOrNull()
+            it.select("a.group").mapIndexed { idx, it ->
                 val url = it.selectFirst("a")?.attr("href")
-                val title = it.selectFirst("figure img")?.attr("alt")
-                val img = it.selectFirst("figure img")?.attr("src")
+                val title = it.selectFirst("h3 span")?.text()?.substringAfter("(")?.substringBefore(")")
+                val img = it.selectFirst("img.lazyload")?.attr("src")
                 newEpisode(url){
                         this.name = title
                         this.season = season
@@ -119,11 +119,10 @@ class CineHdPlusProvider : MainAPI() {
         callback: (ExtractorLink) -> Unit
     ): Boolean {
         val doc = app.get(data).document
-        doc.select("li.clili").amap {
+        doc.select("button.player-tab").amap {
             val lang = it.attr("data-lang")
-            val optId = it.attr("data-tplayernv")
-            val frame = doc.selectFirst("div#$optId")?.selectFirst("iframe")?.attr("data-src")
-                ?.substringAfter("player.php?h=")?.substringBefore("&")
+            val frame = it.attr("data-url")
+                .substringAfter("player.php?h=").substringBefore("&")
             val doc = app.get(
                 "${
                     mainUrl.replaceFirst(

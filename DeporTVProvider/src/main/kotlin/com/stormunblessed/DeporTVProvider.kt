@@ -59,11 +59,11 @@ class DeporTVProvider : MainAPI() {
 
     val sites: List<Site> =
         listOf(
-            Site(SiteKey.RUSTICO, "https://rusticotv.top", "https://rusticotv.top/agenda.html"),
+            Site(SiteKey.RUSTICO, "https://rustico-tv.net", "https://rustico-tv.net/agenda.html"),
             Site(
                 SiteKey.FUTBOLLIBRE,
-                "https://futbollibre-tv.su",
-                "https://futbollibre-tv.su/es/agenda/"
+                "https://ww.futbollibre-tv.su",
+                "https://ww.futbollibre-tv.su/es/agenda/"
             ),
             Site(
                 SiteKey.TVTVHD,
@@ -77,13 +77,13 @@ class DeporTVProvider : MainAPI() {
             ),
             Site(
                 SiteKey.STREAMTP,
-                "https://streamtp10.com",
-                "https://streamtp10.com/eventos.json?nocache=${Date().time}"
+                "https://streamtp-abc.net",
+                "https://streamtp-abc.net/eventos.json?nocache=${Date().time}"
             ),
             Site(
                 SiteKey.STREAMXX,
-                "https://streamx10.cloud",
-                "https://streamx10.cloud/json/agenda345.json?nocache=${Date().time}",
+                "https://streamx550.com",
+                "https://streamx550.com/json/agenda345.json?nocache=${Date().time}",
             ),
         )
     override var name = "DeporTV"
