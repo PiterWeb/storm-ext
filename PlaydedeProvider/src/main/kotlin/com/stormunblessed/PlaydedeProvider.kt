@@ -38,16 +38,16 @@ class PlaydedeProvider : TmdbProvider() {
     var headers: Map<String, String> = emptyMap()
 
     suspend fun initCloudflareKiller(){
-            headers = AcraApplication.Companion.getKey<Map<String, String>>("PLAYDEDE_HEADERS") ?: headers
-            cookies = AcraApplication.Companion.getKey<Map<String, String>>("PLAYDEDE_COOKIES") ?: defaultCookies
+            headers = CloudStreamApp.Companion.getKey<Map<String, String>>("PLAYDEDE_HEADERS") ?: headers
+            cookies = CloudStreamApp.Companion.getKey<Map<String, String>>("PLAYDEDE_COOKIES") ?: defaultCookies
             if(app.get(mainUrl, headers = headers, cookies = cookies).document.text().contains("Just a moment...")){
                 if(killer == null)
                     killer = CloudflareKiller()
                 app.get(mainUrl, interceptor = killer, cookies = cookies)
                 headers = killer?.getCookieHeaders(mainUrl)?.toMap() ?: headers
                 cookies = defaultCookies+(killer?.savedCookies?.get(URL(mainUrl).host) ?: emptyMap())
-                AcraApplication.Companion.setKey("PLAYDEDE_HEADERS", headers)
-                AcraApplication.Companion.setKey("PLAYDEDE_COOKIES", cookies)
+                CloudStreamApp.Companion.setKey("PLAYDEDE_HEADERS", headers)
+                CloudStreamApp.Companion.setKey("PLAYDEDE_COOKIES", cookies)
             }
     }
 
