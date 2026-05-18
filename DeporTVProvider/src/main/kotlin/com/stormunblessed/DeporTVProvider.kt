@@ -59,11 +59,11 @@ class DeporTVProvider : MainAPI() {
 
     val sites: List<Site> =
         listOf(
-            Site(SiteKey.RUSTICO, "https://rustico-tv.net", "https://rustico-tv.net/agenda.html"),
+            Site(SiteKey.RUSTICO, "https://rustico-tv.net", "https://rustico-tv.net/agenda.php"),
             Site(
                 SiteKey.FUTBOLLIBRE,
                 "https://ww.futbollibre-tv.su",
-                "https://ww.futbollibre-tv.su/es/agenda/"
+                "https://ww.futbollibre-tv.su/agenda/"
             ),
             Site(
                 SiteKey.TVTVHD,

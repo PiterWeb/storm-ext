@@ -28,7 +28,9 @@ class CineHdPlusProvider : MainAPI() {
 
     override val mainPage = mainPageOf(
         "series/" to "Series",
+        "series/?sort=popular" to "Series: Populares",
         "peliculas/" to "Peliculas",
+        "peliculas/?sort=popular" to "Peliculas: Populares",
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
