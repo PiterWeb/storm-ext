@@ -26,7 +26,6 @@ class Vimeos : ExtractorApi() {
         val videoUrl =
             Regex("""file:\s*"([^"]+\.m3u8[^"]*)"""").find(unpackedJs)?.groupValues?.get(1)
         if (videoUrl != null) {
-            Log.d("qwerty", "getUrl: $videoUrl")
             M3u8Helper.generateM3u8(
                 this.name,
                 fixUrl(videoUrl),
@@ -63,7 +62,6 @@ class GoodstreamExtractor : ExtractorApi() {
             if (script.data().contains(Regex("sources: \\[\\{file:"))) {
                 val urlRegex = Regex("""file:\s*"([^"]+\.m3u8[^"]*)"""")
                 urlRegex.find(script.data())?.groupValues?.get(1).let { link ->
-                    Log.d("qwerty", "getUrl: $link")
                     M3u8Helper.generateM3u8(
                         this.name,
                         fixUrl(link!!),

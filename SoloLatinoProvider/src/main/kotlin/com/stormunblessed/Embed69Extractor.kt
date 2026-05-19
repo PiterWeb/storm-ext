@@ -32,7 +32,6 @@ object Embed69Extractor {
                 val POW_DIFFICULTY = it.substringAfter("const POW_DIFFICULTY = ").substringBefore(";").toInt()
                 val POW_SALT = it.substringAfter("const POW_SALT = '").substringBefore("';")
                 aesKey = deriveAesKey(POW_CHALLENGE, POW_DIFFICULTY, POW_SALT)
-                Log.d("qwerty", "aesKey: $aesKey")
                 it
             }?.substringAfter("dataLink = ")
             ?.substringBefore(";")?.let {

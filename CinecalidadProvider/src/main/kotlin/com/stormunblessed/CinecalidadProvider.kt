@@ -121,7 +121,6 @@ class CinecalidadProvider : MainAPI() {
     ): Boolean {
         app.get(data).document.select(".linklist ul li").amap {
             val url = it.select("li").attr("data-option")
-            Log.d("qwerty", "loadLinks: $url")
             loadExtractor(fixHostsLinks(url), mainUrl, subtitleCallback, callback)
         }
         return true
