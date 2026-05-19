@@ -22,22 +22,6 @@ jobs:
         uses: actions/checkout@master
         with:
           path: "src"
-          fetch-depth: 2
-      
-      # - name: Detect changed plugins
-      #   id: changes
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/src
-      #     CHANGED=$(git diff --name-only HEAD^ HEAD)
-      #     echo "Changed files name only: $CHANGED"
-      #     PLUGINS=$(echo "$CHANGED" \
-      #     | grep '/' \
-      #     | cut -d'/' -f1 \
-      #     | sort -u \
-      #     | grep -vE '^(\.github|gradle)$' \
-      #     | tr '\n' ' ')
-      #     echo "Changed plugins: $PLUGINS"
-      #     echo "plugins=$PLUGINS" >> $GITHUB_OUTPUT
 
       - name: Checkout builds
         uses: actions/checkout@master
@@ -64,19 +48,6 @@ jobs:
           ./gradlew make makePluginsJson
           cp **/build/*.cs3 $GITHUB_WORKSPACE/builds
           cp build/plugins.json $GITHUB_WORKSPACE/builds
-
-      # - name: Build changed plugins
-      #   if: steps.changes.outputs.plugins != ''
-      #   run: |
-      #     cd $GITHUB_WORKSPACE/src
-      #     chmod +x gradlew
-      #     for plugin in ${{ steps.changes.outputs.plugins }}; do
-      #       echo "Building plugin: $plugin"
-      #       ./gradlew :$plugin:make
-      #       cp $plugin/build/*.cs3 $GITHUB_WORKSPACE/builds || true
-      #     done
-      #     ./gradlew makePluginsJson --exclude-task make
-      #     cp build/plugins.json $GITHUB_WORKSPACE/builds
 
       - name: Push builds
         run: |
