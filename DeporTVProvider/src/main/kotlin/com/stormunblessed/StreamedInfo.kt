@@ -41,24 +41,22 @@ class StreamedInfo {
         val searchTitle = title.replace(" vs. ", " vs ")
         val searchHome = searchTitle.substringBefore(" vs ").trimAndClean()
         val searchAway = searchTitle.substringAfter(" vs ").trimAndClean()
-        return this.matches.firstOrNull {
-            val title = it.title.replace(" vs. ", " vs ")
-            val home =
-                it.teams?.home?.name?.trimAndClean() ?: title.substringBefore(" vs ").trimAndClean()
-            val away =
-                it.teams?.away?.name?.trimAndClean() ?: title.substringAfter(" vs ").trimAndClean()
-            var homeMatch =
-                home.containsNoSpaces(searchHome) || searchHome.containsNoSpaces(home)
-            if (!homeMatch) {
-                homeMatch = home.containsAnyWordIgnoreCase(searchHome) || searchHome.containsAnyWordIgnoreCase(home)
+        return this.matches.firstOrNull { match ->
+            val title = match.title.replace(" vs. ", " vs ")
+            val home = match.teams?.home?.name?.trimAndClean()
+                ?: title.substringBefore(" vs ").trimAndClean()
+            val away = match.teams?.away?.name?.trimAndClean()
+                ?: title.substringAfter(" vs ").trimAndClean()
+            fun checkMatch(team: String, search: String): Boolean {
+                return when {
+                    team.containsNoSpaces(search) || search.containsNoSpaces(team) -> true
+                    team.containsAnyWordIgnoreCase(search) || search.containsAnyWordIgnoreCase(team) -> true
+                    else -> false
+                }
             }
-            var awayMatch =
-                away.containsNoSpaces(searchAway) || searchAway.containsNoSpaces(away)
-            if (!awayMatch) {
-                awayMatch = away.containsAnyWordIgnoreCase(searchAway) || searchAway.containsAnyWordIgnoreCase(away)
-            }
-            val matches = homeMatch && awayMatch
-            matches
+            val directMatch = checkMatch(home, searchHome) && checkMatch(away, searchAway)
+            val reverseMatch = checkMatch(home, searchAway) && checkMatch(away, searchHome)
+            directMatch || reverseMatch
         }?.let {
             val hourFormat = SimpleDateFormat("HH:mm", Locale.US)
             val hourString = hourFormat.format(Date(it.date))
