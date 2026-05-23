@@ -13,7 +13,8 @@ class StreamedInfo {
     var matches: MatchesResult = MatchesResult();
 
     suspend fun init() {
-        val res = app.get("$mainUrl/api/matches/all")
+//        val res = app.get("$mainUrl/api/matches/all")
+        val res = app.get("$mainUrl/api/matches/live")
         this.matches = res.parsed<MatchesResult>()
     }
 
