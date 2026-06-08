@@ -16,6 +16,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 import android.util.Base64
+import android.util.Log
 import com.lagradost.cloudstream3.network.WebViewResolver
 import com.lagradost.cloudstream3.utils.CLEARKEY_UUID
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
@@ -59,32 +60,36 @@ class DeporTVProvider : MainAPI() {
 
     val sites: List<Site> =
         listOf(
-            Site(SiteKey.RUSTICO, "https://rustico-tv.net", "https://rustico-tv.net/agenda.php"),
+            Site(
+                SiteKey.RUSTICO,
+                "https://rustico-tv.net",
+                "/agenda.php"
+            ),
             Site(
                 SiteKey.FUTBOLLIBRE,
                 "https://ww.futbollibre-tv.su",
-                "https://ww.futbollibre-tv.su/agenda/"
+                "/agenda/"
             ),
             Site(
                 SiteKey.TVTVHD,
                 "https://tvtvhd.com",
-                "https://pltvhd.com/diaries.json"
+                "/diaries.json"
             ),
-             Site(
-                 SiteKey.LA14HD,
-                 "https://la14hd.com",
-                 "https://la14hd.com/eventos/json/agenda123.json"
-             ),
-             Site(
-                 SiteKey.STREAMTP,
-                 "https://streamtp-abc.net",
-                 "https://streamtp-abc.net/eventos.json?nocache=${Date().time}"
-             ),
-             Site(
-                 SiteKey.STREAMXX,
-                 "https://streamx550.com",
-                 "https://streamx741.com/json/agenda550.json?nocache=${Date().time}",
-             ),
+            Site(
+                SiteKey.LA14HD,
+                "https://la14hd.com",
+                "/eventos/json/agenda123.json"
+            ),
+            Site(
+                SiteKey.STREAMTP,
+                "https://streamtp-abc.net",
+                "/eventos.json?nocache=${Date().time}"
+            ),
+            Site(
+                SiteKey.STREAMXX,
+                "https://streamx741.com/",
+                "/json/agenda550.json?nocache=${Date().time}",
+            ),
         )
     override var name = "DeporTV"
     override var lang = "mx"
@@ -102,10 +107,29 @@ class DeporTVProvider : MainAPI() {
         "es/agenda/" to "Agenda",
     )
 
+    suspend fun followRedirects(url: String): String {
+        val jsRedirectRegex = Regex("""window\.location\.href\s*=\s*"([^"]+)";""")
+        val res = app.get(url, timeout = 5, allowRedirects = false)
+        val data = res.document.data()
+        val jsRedirectUrl = jsRedirectRegex.find(data)?.groupValues?.get(1)
+        if (jsRedirectUrl != null) {
+            return jsRedirectUrl
+        }
+        val metaRedirectUrl =
+            res.document.selectFirst("head meta[http-equiv=refresh]")?.attr("content")
+                ?.substringAfter("url=")
+        if (metaRedirectUrl != null) {
+            return metaRedirectUrl
+        }
+        return app.get(url, timeout = 5, allowRedirects = true).url
+    }
+
+
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         streamedInfo.init()
         val agendaData = sites.amap {
-            val url = it.agendaUrl
+            val mainUrl = followRedirects(it.mainUrl)
+            val url = mainUrl + it.agendaUrl
             var res: NiceResponse? = null;
             try {
                 res = app.get(url, timeout = 5)
@@ -293,7 +317,7 @@ class DeporTVProvider : MainAPI() {
                 val source = URL(frame).host
                 val chanelNameParameter = frame.substringAfter("global1.php?").substringBefore("=")
                 val name = frame.substringAfter(".php?$chanelNameParameter=")
-                val doc = app.get(frame).document
+                val doc = app.get(frame, headers = mapOf("Sec-Fetch-Dest" to "iframe")).document
                 var result =
                     doc.select("script").firstOrNull { it.html().contains("var playbackURL") }
                         ?.let {
@@ -321,6 +345,7 @@ class DeporTVProvider : MainAPI() {
                                     })
                                 rhino.evaluateString(scope, scriptContent, "playbackURL", 1, null)
                                 result = scope.get("playbackURL", scope).toString()
+                            } catch (e: Exception) {
                             } finally {
                                 rhino.close()
                             }
