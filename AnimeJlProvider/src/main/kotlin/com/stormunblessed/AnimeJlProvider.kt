@@ -2,13 +2,21 @@ package com.stormunblessed
 
 import android.util.Log
 import com.lagradost.cloudstream3.*
+import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.nicehttp.NiceResponse
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Element
 
 class AnimeJlProvider : MainAPI() {
+    private val cloudflareKiller = CloudflareKiller()
+
+    private suspend fun appGetCf(url: String): NiceResponse {
+        return app.get(url, interceptor = cloudflareKiller)
+    }
+
     override var mainUrl = "https://www.anime-jl.net"
     override var name = "AnimeJL"
     override var lang = "mx"
@@ -27,7 +35,7 @@ class AnimeJlProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data}&page=$page").document
+        val document = appGetCf("$mainUrl/${request.data}&page=$page").document
         val home = document.select("ul.ListAnimes li")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(
@@ -48,6 +56,7 @@ class AnimeJlProvider : MainAPI() {
         )?.replaceFirst("^/".toRegex(), "$mainUrl/")
         return newAnimeSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
+            this.posterHeaders = if (posterUrl?.contains(mainUrl) == true) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap()
             addDubStatus(getDubStatus(href))
         }
     }
@@ -59,14 +68,14 @@ class AnimeJlProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("$mainUrl/animes?q=$query").document
+        val document = appGetCf("$mainUrl/animes?q=$query").document
         val results =
             document.select("ul.ListAnimes li").mapNotNull { it.toSearchResult() }
         return results
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val doc = app.get(url).document
+        val doc = appGetCf(url).document
         val title = doc.selectFirst("div.Ficha div.Container h1.Title")?.text() ?: ""
         val backimage = doc.selectFirst("div.Ficha div.Bg")!!.attr("style")
             .substringAfter("background-image:url(").substringBefore(")")
@@ -117,6 +126,7 @@ class AnimeJlProvider : MainAPI() {
         ) {
             this.posterUrl = poster
             this.backgroundPosterUrl = backimage
+            this.posterHeaders = if (poster.contains(mainUrl)) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap()
             this.plot = description
             this.tags = tags
         }
@@ -139,7 +149,7 @@ class AnimeJlProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        app.get(data).document.select("script")
+        appGetCf(data).document.select("script")
             .firstOrNull { it.html().contains("var video = [];") }?.let { frameUrl ->
                 fetchUrls(frameUrl.html())
                     .amap {

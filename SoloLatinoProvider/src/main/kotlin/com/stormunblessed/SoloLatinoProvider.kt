@@ -3,7 +3,9 @@ package com.stormunblessed
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import org.jsoup.nodes.Element
+
 
 class SoloLatinoProvider : MainAPI() {
     override var mainUrl = "https://sololatino.net"
@@ -20,23 +22,25 @@ class SoloLatinoProvider : MainAPI() {
     )
 
     override val mainPage = mainPageOf(
-        "peliculas?" to "Peliculas",
-        "series?" to "Series",
-        "animes?" to "Animes",
+        "peliculas" to "Peliculas",
+        "series" to "Series",
+        "animes" to "Animes",
         "peliculas?genero=animacion&sort=popular" to "Cartoons",
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data}&page=$page").document
+        val separator = if (request.data.contains("?")) "&" else "?"
+        val document = app.get("$mainUrl/${request.data}${separator}page=$page").document
         val home = document.select("div.card")
             .mapNotNull { it.toSearchResult() }
+        val hasNext = document.selectFirst("a[href*='page=']:contains(›)") != null
         return newHomePageResponse(
             list = HomePageList(
                 name = request.name,
                 list = home,
                 isHorizontalImages = false
             ),
-            hasNext = true
+            hasNext = hasNext
         )
     }
 
@@ -44,7 +48,8 @@ class SoloLatinoProvider : MainAPI() {
         val title = this.selectFirst("div.card__info p.card__title")?.text() ?: "xd"
         val link = this.selectFirst("a")?.attr("href") ?: "xd"
         val img = this.selectFirst("a div.card__poster-wrap img.card__poster")?.attr("src")
-        return newMovieSearchResponse(title, link, TvType.Movie) {
+        val type = if (link.contains("/pelicula/")) TvType.Movie else TvType.TvSeries
+        return newMovieSearchResponse(title, link, type) {
             this.posterUrl = img
         }
     }
@@ -74,7 +79,7 @@ class SoloLatinoProvider : MainAPI() {
         val backimage = doc.selectFirst(".detail-hero__bg")?.attr("style")?.substringAfter("url('")?.substringBefore("');")
         val description = doc.selectFirst("p.text-sm.leading-relaxed.max-w-2xl")!!.text()
         val year = doc.selectFirst("div.flex.flex-wrap.items-center.text-sm span")?.text()?.toIntOrNull()
-        val tags = doc.select("a.py-1").map { it.text() }
+        val tags = doc.select("div.flex-1.min-w-0 a[href*=/genero/]").map { it.text() }
         val recommendations = doc.select("div[id*=scroll-related] div.card").mapNotNull { it.toSearchResult() }
         val episodes = doc.select("div[data-season-panel]").flatMap {
             val season = it.attr("data-season-panel").toIntOrNull()
@@ -128,22 +133,51 @@ class SoloLatinoProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        app.get(data).document.select("button.server-btn").amap{
-            val url = it.attr("data-server-url")
-            if (url.startsWith("https://embed69.org/")) {
-                Embed69Extractor.load(url, data, subtitleCallback, callback)
-            } else if (url.startsWith("https://xupalace.org/video")) {
-                val regex = """(go_to_player|go_to_playerVast)\('(.*?)'""".toRegex()
-                regex.findAll(app.get(url).document.html()).map { it.groupValues.get(2) }
-                    .toList().amap {
-                        loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
+        val doc = app.get(data).document
+        val csrf = doc.selectFirst("meta[name=csrf-token]")?.attr("content") ?: ""
+        val headers = mapOf(
+            "Content-Type" to "application/json",
+            "X-CSRF-TOKEN" to csrf,
+            "Accept" to "application/json",
+        )
+        doc.select("button.server-btn").amap { btn ->
+            val token = btn.attr("data-player-token")
+            if (token.isNotBlank()) {
+                val response = app.post(
+                    "$mainUrl/api/player-url",
+                    headers = headers,
+                    data = mapOf("t" to token)
+                ).parsedSafe<PlayerResponse>()
+                response?.let { resolved ->
+                    val url = resolved.url
+                    when {
+                        resolved.type == "mp4" -> callback.invoke(
+                            newExtractorLink("SoloLatino", "SoloLatino", url)
+                        )
+                        url.startsWith("https://embed69.org/") -> {
+                            Embed69Extractor.load(url, data, subtitleCallback, callback)
+                        }
+                        url.startsWith("https://xupalace.org/video") -> {
+                            val regex = """(go_to_player|go_to_playerVast)\('(.*?)'""".toRegex()
+                            regex.findAll(app.get(url).document.html()).map { it.groupValues[2] }
+                                .toList().amap {
+                                    loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
+                                }
+                        }
+                        else -> {
+                            app.get(url).document.selectFirst("iframe")?.attr("src")?.let {
+                                loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
+                            }
+                        }
                     }
-            } else { // https://xupalace.org/uqlink.php or others
-                app.get(url).document.selectFirst("iframe")?.attr("src")?.let {
-                    loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
                 }
             }
         }
         return true
     }
 }
+
+data class PlayerResponse(
+    val url: String = "",
+    val type: String = "",
+)

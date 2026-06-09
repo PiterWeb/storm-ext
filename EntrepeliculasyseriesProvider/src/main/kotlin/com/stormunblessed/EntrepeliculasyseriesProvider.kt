@@ -5,11 +5,18 @@ import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.nicehttp.NiceResponse
 import com.stormunblessed.Embed69Extractor
 import com.stormunblessed.fixHostsLinks
 import org.jsoup.nodes.Element
 
 class EntrepeliculasyseriesProvider : MainAPI() {
+    private val cloudflareKiller = CloudflareKiller()
+
+    private suspend fun appGetCf(url: String): NiceResponse {
+        return app.get(url, interceptor = cloudflareKiller)
+    }
+
     override var mainUrl = "https://entrepeliculasyseries.nz"
     override var name = "EntrePeliculasySeries"
     override var lang = "mx"
@@ -29,7 +36,7 @@ class EntrepeliculasyseriesProvider : MainAPI() {
     )
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        val document = app.get("$mainUrl/${request.data}?page=$page").document
+        val document = appGetCf("$mainUrl/${request.data}?page=$page").document
         val home = document.select(".post-lst li")
             .mapNotNull { it.toSearchResult() }
         return newHomePageResponse(
@@ -43,48 +50,54 @@ class EntrepeliculasyseriesProvider : MainAPI() {
     }
 
     private fun Element.toSearchResult(): SearchResponse {
-        val title = this.select("article.post a header.entry-header h2.title").text()
+        val title = this.select("article.post a header.entry-header .title").text()
         val href =
             this.select("article.post a").attr("href").replaceFirst("^/".toRegex(), "$mainUrl/")
         val posterUrl =
-            fixUrlNull(this.select("article.post.a a figure.post-thumbnail img").attr("src"))
+            fixUrlNull(this.select("article.post a figure.post-thumbnail img").attr("src"))
         return newMovieSearchResponse(title, href, TvType.Movie) {
             this.posterUrl = posterUrl
         }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val document = app.get("${mainUrl}/search?s=$query").document
+        val document = appGetCf("${mainUrl}/search?s=$query").document
         val results =
             document.select(".post-lst li").mapNotNull { it.toSearchResult() }
         return results
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val doc = app.get(url).document
+        val doc = appGetCf(url).document
         val tvType = if (url.contains("/pelicula")) TvType.Movie else TvType.TvSeries
         val title = doc.selectFirst(".movie-title")?.text()
         val plot = doc.selectFirst(".movie-description")?.text()
-        val year = doc.selectFirst(".movie-meta > span:nth-child(1)")?.text()?.toIntOrNull()
+        val year = doc.select(".movie-meta > span").mapNotNull { span ->
+            val text = span.text().trim()
+            text.toIntOrNull() ?: text.take(4).toIntOrNull()
+        }.firstOrNull { it in 1900..2100 }
         val poster = doc.selectFirst(".movie-poster img")?.attr("src")
-        val backimage = doc.selectFirst("#fakePlayer > meta:nth-child(4)")?.attr("content")
         val tags = doc.select(".movie-genres a").map { it.text() }
         val recommendations = doc.select(".post-lst li").mapNotNull { it.toSearchResult() }
-        val episodes = doc.select("div.episodes-grid").flatMap {
-            val season = it.attr("id").replaceFirst("season-", "").toIntOrNull()
-            it.select(".episode-card").mapIndexed { idx, it ->
-                val url =
-                    it.selectFirst("a")?.attr("href")?.replaceFirst("^/".toRegex(), "$mainUrl/")
-                newEpisode(url) {
-                    this.season = season?.plus(1)
-                    this.episode = idx + 1
-                }
+        val episodeRegex = """/temporada/(\d+)/capitulo/(\d+)""".toRegex()
+        val episodes = doc.select("div.episodes-grid").flatMap { grid ->
+            grid.select(".episode-card a").mapNotNull { link ->
+                val href = link.attr("href")
+                val url = href.replaceFirst("^/".toRegex(), "$mainUrl/")
+                val match = episodeRegex.find(href)
+                if (match != null) {
+                    val season = match.groupValues[1].toIntOrNull()
+                    val episode = match.groupValues[2].toIntOrNull()
+                    newEpisode(url) {
+                        this.season = season
+                        this.episode = episode
+                    }
+                } else null
             }
         }
         return when (tvType) {
             TvType.Movie -> newMovieLoadResponse(title!!, url, TvType.Movie, url) {
                 this.posterUrl = poster
-                this.backgroundPosterUrl = backimage ?: poster
                 this.plot = plot
                 this.tags = tags
                 this.year = year
@@ -96,7 +109,6 @@ class EntrepeliculasyseriesProvider : MainAPI() {
                 url, tvType, episodes,
             ) {
                 this.posterUrl = poster
-                this.backgroundPosterUrl = backimage ?: poster
                 this.plot = plot
                 this.tags = tags
                 this.year = year
@@ -113,19 +125,28 @@ class EntrepeliculasyseriesProvider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        app.get(data).document.select("div.player-frame").amap {
-            it.selectFirst("iframe")?.attr("src")?.let {
-                if (it.startsWith("https://embed69.org/")) {
-                    Embed69Extractor.load(it, data, subtitleCallback, callback)
-                } else if (it.startsWith("https://xupalace.org/video")) {
-                    val regex = """(go_to_player|go_to_playerVast)\('(.*?)'""".toRegex()
-                    regex.findAll(app.get(it).document.html()).map { it.groupValues.get(2) }
-                        .toList().amap {
+        appGetCf(data).document.select("div.player-frame").amap {
+            it.selectFirst("iframe")?.attr("src")?.let { src ->
+                val embedUrl = if (src.startsWith("/")) "$mainUrl$src" else src
+                when {
+                    embedUrl.startsWith("https://embed69.org/") -> {
+                        Embed69Extractor.load(embedUrl, data, subtitleCallback, callback)
+                    }
+                    embedUrl.startsWith("$mainUrl/") -> {
+                        val doc = appGetCf(embedUrl).document
+                        Embed69Extractor.loadFromDocument(doc, embedUrl, subtitleCallback, callback)
+                    }
+                    embedUrl.startsWith("https://xupalace.org/video") -> {
+                        val regex = """(go_to_player|go_to_playerVast)\('(.*?)'""".toRegex()
+                        regex.findAll(app.get(embedUrl).document.html()).map { it.groupValues.get(2) }
+                            .toList().amap {
+                                loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
+                            }
+                    }
+                    else -> {
+                        app.get(embedUrl).document.selectFirst("iframe")?.attr("src")?.let {
                             loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
                         }
-                } else { // https://xupalace.org/uqlink.php or others
-                    app.get(it).document.selectFirst("iframe")?.attr("src")?.let {
-                        loadExtractor(fixHostsLinks(it), data, subtitleCallback, callback)
                     }
                 }
             }

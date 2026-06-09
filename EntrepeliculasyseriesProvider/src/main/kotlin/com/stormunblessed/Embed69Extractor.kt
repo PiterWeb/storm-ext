@@ -25,8 +25,17 @@ object Embed69Extractor {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ) {
+        loadFromDocument(app.get(url).document, url, subtitleCallback, callback)
+    }
+
+    suspend fun loadFromDocument(
+        doc: org.jsoup.nodes.Document,
+        referer: String,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
+    ) {
         var aesKey: ByteArray;
-        app.get(url).document.select("script")
+        doc.select("script")
             .firstOrNull { it.html().contains("dataLink = [") }?.html()?.let {
                 val POW_CHALLENGE = it.substringAfter("const POW_CHALLENGE = '").substringBefore("';")
                 val POW_DIFFICULTY = it.substringAfter("const POW_DIFFICULTY = ").substringBefore(";").toInt()
