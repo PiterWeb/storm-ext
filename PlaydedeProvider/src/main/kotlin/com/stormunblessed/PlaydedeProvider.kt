@@ -5,8 +5,6 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.LoadResponse.Companion.addTrailer
 import com.lagradost.cloudstream3.metaproviders.TmdbProvider
-import com.lagradost.cloudstream3.mvvm.logError
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -31,25 +29,8 @@ class PlaydedeProvider : TmdbProvider() {
         TvType.TvSeries,
         TvType.Anime,
     )
-    var killer: CloudflareKiller? = null;
     // usr=gjvzhllq pass=gjvzhllq1
     val defaultCookies = mapOf("utoken" to "w9K2uGAKjMvDeRBUgACEtaQ5ZD77W")
-    var cookies: Map<String, String> = emptyMap()
-    var headers: Map<String, String> = emptyMap()
-
-    suspend fun initCloudflareKiller(){
-            headers = CloudStreamApp.Companion.getKey<Map<String, String>>("PLAYDEDE_HEADERS") ?: headers
-            cookies = CloudStreamApp.Companion.getKey<Map<String, String>>("PLAYDEDE_COOKIES") ?: defaultCookies
-            if(app.get(mainUrl, headers = headers, cookies = cookies).document.text().contains("Just a moment...")){
-                if(killer == null)
-                    killer = CloudflareKiller()
-                app.get(mainUrl, interceptor = killer, cookies = cookies)
-                headers = killer?.getCookieHeaders(mainUrl)?.toMap() ?: headers
-                cookies = defaultCookies+(killer?.savedCookies?.get(URL(mainUrl).host) ?: emptyMap())
-                CloudStreamApp.Companion.setKey("PLAYDEDE_HEADERS", headers)
-                CloudStreamApp.Companion.setKey("PLAYDEDE_COOKIES", cookies)
-            }
-    }
 
     data class TMDBMovie(
         @JsonProperty("title") val title: String? = null,
@@ -62,28 +43,41 @@ class PlaydedeProvider : TmdbProvider() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        initCloudflareKiller()
+        // site playdede.in appears to be down/redirected to enlaces.ly
+        // try alternative domains if available
+        val sites = listOf(mainUrl, "https://playdede.su", "https://playdede.city")
         val res = parseJson<LinkData>(data)
-        var path = app.get(
-            "$mainUrl/search?s=${res.tmdbId}", headers = headers, cookies = cookies
-        ).document.selectFirst("#\\ archive-content article a")?.attr("href")
-        if(path.isNullOrBlank() || !path.endsWith(res.tmdbId.toString())){
-            val source = if(res.season == null) "movie" else "tv"
-            val info = app.get(
-                "https://api.themoviedb.org/3/$source/${res.tmdbId}?api_key=1865f43a0549ca50d341dd9ab8b29f49&language=es-ES").parsed<TMDBMovie>()
-            val search = if(res.season == null) info.title else info.name
-            path = app.get(
-                "$mainUrl/search?s=$search", headers = headers, cookies = cookies
-            ).document.selectFirst("#\\ archive-content article a")?.attr("href")
+        var path: String? = null
+        for (site in sites) {
+            try {
+                val doc = app.get("$site/search?s=${res.tmdbId}").document
+                path = doc.selectFirst("#\\ archive-content article a")?.attr("href")
+                if (!path.isNullOrBlank() && path.endsWith(res.tmdbId.toString())) {
+                    mainUrl = site
+                    break
+                }
+                val source = if (res.season == null) "movie" else "tv"
+                val info = app.get(
+                    "https://api.themoviedb.org/3/$source/${res.tmdbId}?api_key=1865f43a0549ca50d341dd9ab8b29f49&language=es-ES"
+                ).parsed<TMDBMovie>()
+                val search = if (res.season == null) info.title else info.name
+                path = app.get(
+                    "$site/search?s=$search"
+                ).document.selectFirst("#\\ archive-content article a")?.attr("href")
+                if (!path.isNullOrBlank()) {
+                    mainUrl = site
+                    break
+                }
+            } catch (_: Exception) { }
         }
-        if(!path.isNullOrBlank()){
-            val url = if(path.startsWith("pelicula"))  "$mainUrl/$path" else "$mainUrl/episodios/${path.substringAfter("/")}-${res.season}x${res.episode}/"
-            val doc = app.get(url, headers = headers, cookies = cookies).document
+        if (!path.isNullOrBlank()) {
+            val url = if (path.startsWith("pelicula")) "$mainUrl/$path" else "$mainUrl/episodios/${path.substringAfter("/")}-${res.season}x${res.episode}/"
+            val doc = app.get(url).document
             doc.select("div.playerItem").amap {
                 val lang = it.attr("data-lang")
                 val playerId = it.attr("data-loadplayer")
-                val link = app.get("https://playdede.in/embed.php?id=$playerId&width=1080&height=480", headers = headers, cookies = cookies).document.selectFirst("iframe")?.attr("src")
-                if(!link.isNullOrBlank()){
+                val link = app.get("$mainUrl/embed.php?id=$playerId&width=1080&height=480").document.selectFirst("iframe")?.attr("src")
+                if (!link.isNullOrBlank()) {
                     loadSourceNameExtractor(lang, fixHostsLinks(link), "$mainUrl/", subtitleCallback, callback)
                 }
             }
@@ -139,4 +133,9 @@ fun fixHostsLinks(url: String): String {
         .replaceFirst("https://lulu.st", "https://lulustream.com")
         .replaceFirst("https://uqload.io", "https://uqload.com")
         .replaceFirst("https://do7go.com", "https://dood.la")
+        .replaceFirst("https://powvideo.org", "https://powvideo.net")
+        .replaceFirst("https://vidmoly.me", "https://vidmoly.com")
+        .replaceFirst("https://mixdrop.bz", "https://mixdrop.co")
+        .replaceFirst("https://streamtape.com", "https://streamtape.to")
+        .replaceFirst("https://gamovideo.com", "https://gamovideo.net")
 }
