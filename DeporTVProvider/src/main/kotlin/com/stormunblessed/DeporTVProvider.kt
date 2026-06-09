@@ -1,8 +1,6 @@
 package com.lagradost.cloudstream3.movieproviders
 
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.utils.AppUtils
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.Qualities
 import com.lagradost.cloudstream3.utils.loadExtractor
@@ -18,6 +16,8 @@ import java.util.TimeZone
 import android.util.Base64
 import android.util.Log
 import com.lagradost.cloudstream3.network.WebViewResolver
+import com.lagradost.cloudstream3.utils.AppUtils
+import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.CLEARKEY_UUID
 import com.lagradost.cloudstream3.utils.ExtractorLinkType
 import com.lagradost.cloudstream3.utils.getAndUnpack
@@ -28,7 +28,6 @@ import com.stormunblessed.StreamedInfo
 import org.mozilla.javascript.Context
 import java.net.URL
 import java.util.Calendar
-
 
 data class La14HDMatchInfo(
     val category: String,
@@ -73,7 +72,7 @@ class DeporTVProvider : MainAPI() {
             Site(
                 SiteKey.TVTVHD,
                 "https://tvtvhd.com",
-                "/diaries.json"
+                "https://pltvhd.com/diaries.json"
             ),
             Site(
                 SiteKey.LA14HD,
@@ -128,8 +127,13 @@ class DeporTVProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         streamedInfo.init()
         val agendaData = sites.amap {
-            val mainUrl = followRedirects(it.mainUrl)
-            val url = mainUrl + it.agendaUrl
+            var url= ""
+            if(it.agendaUrl.startsWith("http")){
+                url = it.agendaUrl
+            }else{
+                val mainUrl = followRedirects(it.mainUrl)
+                url = mainUrl + it.agendaUrl
+            }
             var res: NiceResponse? = null;
             try {
                 res = app.get(url, timeout = 5)
@@ -152,6 +156,7 @@ class DeporTVProvider : MainAPI() {
                             )
                         } ?: emptyList()
                 } else if (it.key.equals(SiteKey.TVTVHD)) {
+                    Log.d("qwerty", "json: ${res.text}")
                     events = AppUtils.tryParseJson<FTVHDApiResponse>(res.text)?.data
                         ?.map {
                             val matchId =
@@ -166,6 +171,7 @@ class DeporTVProvider : MainAPI() {
                                 matchId.poster
                             )
                         } ?: emptyList()
+                    Log.d("qwerty", "getMainPage: $events")
                 } else {
                     events = res.document.select(".menu > li")
                         .mapNotNull { it.rusticoToEventData(url) }
@@ -285,17 +291,18 @@ class DeporTVProvider : MainAPI() {
                     .replaceFirst(
                         "https://librefutbolhd.su/embed/canales.php?stream=",
                         "https://tvtvhd.com/vivo/canales.php?stream="
+                    ).replaceFirst(
+                        "https://latamx701.org/global2.php?stream=",
+                        "https://la18hd.com/vivo/canales.php?stream="
+                    ).replaceFirst(
+                        "https://latamx701.org/global1.php?stream=",
+                        "https://streamtp-x-y-z.ws/global1.php?stream="
                     )
             } else it
             if (frame.contains("canales.php?stream=") || frame.contains("canal.php?stream=")) {
-                // https://futbollibrelibre.com/canales.php?stream=
-                // https://la14hd.com/vivo/canales.php?stream=
                 val source = URL(frame).host
                 val name = frame.substringAfter("?stream=")
-                val url =
-                    if (name.startsWith("evento"))
-                        frame.replace("/canales.php?", "/tv/canal.php?")
-                    else frame
+                val url = app.get(frame, referer = it).document.selectFirst("iframe")?.attr("src") ?: frame
                 val doc = app.get(url, referer = url).document
                 val link =
                     doc.select("script").firstOrNull { it.data().contains("var playbackURL = ") }
@@ -312,10 +319,8 @@ class DeporTVProvider : MainAPI() {
                         }
                     )
             } else if (frame.contains("global1.php?")) {
-//              https://streamx10.cloud/global1.php?channel=
-//                https://streamtp10.com/global1.php?stream=
                 val source = URL(frame).host
-                val chanelNameParameter = frame.substringAfter("global1.php?").substringBefore("=")
+                val chanelNameParameter = frame.substringAfter(".php?").substringBefore("=")
                 val name = frame.substringAfter(".php?$chanelNameParameter=")
                 val doc = app.get(frame, headers = mapOf("Sec-Fetch-Dest" to "iframe")).document
                 var result =
@@ -510,7 +515,6 @@ data class StgruberChannelInfo(
     val k1: String?,
     val k2: String?
 )
-
 
 data class EventData(
     val title: String,

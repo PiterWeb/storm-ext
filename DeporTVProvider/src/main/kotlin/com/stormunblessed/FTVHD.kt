@@ -19,6 +19,7 @@ data class FTVHDEventAttributes(
     @JsonProperty("date_diary") val dateDiary: String,
     @JsonProperty("createdAt") val createdAt: String,
     @JsonProperty("updatedAt") val updatedAt: String,
+    @JsonProperty("publishedAt") val publishedAt: String,
     @JsonProperty("channels") val channels: FTVHDChannelList,
     @JsonProperty("embeds") val embeds: FTVHDEmbedList,
     @JsonProperty("country") val country: FTVHDCountryData
@@ -39,8 +40,8 @@ data class FTVHDEmbedData(
 
 data class FTVHDEmbedAttributes(
     @JsonProperty("embed_name") val embedName: String,
-    @JsonProperty("embed_link") val embedLink: String?,
     @JsonProperty("embed_iframe") val embedIframe: String
+    // embed_link removed — not present in API response
 )
 
 data class FTVHDCountryData(
@@ -49,7 +50,7 @@ data class FTVHDCountryData(
 
 data class FTVHDCountryInfo(
     @JsonProperty("id") val id: Int,
-    @JsonProperty("attributes") val attributes: FTVHDCountryAttributes
+    @JsonProperty("attributes") val attributes: FTVHDCountryAttributes  // was Any
 )
 
 data class FTVHDCountryAttributes(
