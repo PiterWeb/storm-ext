@@ -74,36 +74,36 @@ class DeporTVProvider : MainAPI() {
 
     val sites: List<Site> =
         listOf(
-//            Site(
-//                SiteKey.RUSTICO,
-//                "https://rustico-tv.net",
-//                "/agenda.php"
-//            ),
-//            Site(
-//                SiteKey.FUTBOLLIBRE,
-//                "https://ww.futbollibre-tv.su",
-//                "/agenda/"
-//            ),
-//            Site(
-//                SiteKey.TVTVHD,
-//                "https://tvtvhd.com",
-//                "https://pltvhd.com/diaries.json"
-//            ),
-//            Site(
-//                SiteKey.LA14HD,
-//                "https://la14hd.com",
-//                "/eventos/json/agenda123.json"
-//            ),
-//            Site(
-//                SiteKey.STREAMTP,
-//                "https://streamtp-abc.net",
-//                "/eventos.json?nocache=${Date().time}"
-//            ),
-//            Site(
-//                SiteKey.STREAMXX,
-//                "https://streamx741.com/",
-//                "/json/agenda550.json?nocache=${Date().time}",
-//            ),
+            Site(
+                SiteKey.RUSTICO,
+                "https://rustico-tv.net",
+                "/agenda.php"
+            ),
+            Site(
+                SiteKey.FUTBOLLIBRE,
+                "https://ww.futbollibre-tv.su",
+                "/agenda/"
+            ),
+            Site(
+                SiteKey.TVTVHD,
+                "https://tvtvhd.com",
+                "https://pltvhd.com/diaries.json"
+            ),
+            Site(
+                SiteKey.LA14HD,
+                "https://la14hd.com",
+                "/eventos/json/agenda123.json"
+            ),
+            Site(
+                SiteKey.STREAMTP,
+                "https://streamtp-abc.net",
+                "/eventos.json?nocache=${Date().time}"
+            ),
+            Site(
+                SiteKey.STREAMXX,
+                "https://streamx741.com/",
+                "/json/agenda550.json?nocache=${Date().time}",
+            ),
             Site(
                 SiteKey.CANALESDEPORTIVOS,
                 "https://canalesdeportivos.net",
