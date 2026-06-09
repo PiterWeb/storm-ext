@@ -46,7 +46,22 @@ enum class SiteKey {
     LA14HD,
     STREAMTP,
     STREAMXX,
+    CANALESDEPORTIVOS,
 }
+
+data class PartidoJson(
+    val hora_utc: String,
+    val logo: String,
+    val liga: String,
+    val equipos: String,
+    val canales: List<CanalInfo>
+)
+
+data class CanalInfo(
+    val nombre: String,
+    val url: String,
+    val calidad: String
+)
 
 data class Site(
     val key: SiteKey,
@@ -59,35 +74,40 @@ class DeporTVProvider : MainAPI() {
 
     val sites: List<Site> =
         listOf(
+//            Site(
+//                SiteKey.RUSTICO,
+//                "https://rustico-tv.net",
+//                "/agenda.php"
+//            ),
+//            Site(
+//                SiteKey.FUTBOLLIBRE,
+//                "https://ww.futbollibre-tv.su",
+//                "/agenda/"
+//            ),
+//            Site(
+//                SiteKey.TVTVHD,
+//                "https://tvtvhd.com",
+//                "https://pltvhd.com/diaries.json"
+//            ),
+//            Site(
+//                SiteKey.LA14HD,
+//                "https://la14hd.com",
+//                "/eventos/json/agenda123.json"
+//            ),
+//            Site(
+//                SiteKey.STREAMTP,
+//                "https://streamtp-abc.net",
+//                "/eventos.json?nocache=${Date().time}"
+//            ),
+//            Site(
+//                SiteKey.STREAMXX,
+//                "https://streamx741.com/",
+//                "/json/agenda550.json?nocache=${Date().time}",
+//            ),
             Site(
-                SiteKey.RUSTICO,
-                "https://rustico-tv.net",
-                "/agenda.php"
-            ),
-            Site(
-                SiteKey.FUTBOLLIBRE,
-                "https://ww.futbollibre-tv.su",
-                "/agenda/"
-            ),
-            Site(
-                SiteKey.TVTVHD,
-                "https://tvtvhd.com",
-                "https://pltvhd.com/diaries.json"
-            ),
-            Site(
-                SiteKey.LA14HD,
-                "https://la14hd.com",
-                "/eventos/json/agenda123.json"
-            ),
-            Site(
-                SiteKey.STREAMTP,
-                "https://streamtp-abc.net",
-                "/eventos.json?nocache=${Date().time}"
-            ),
-            Site(
-                SiteKey.STREAMXX,
-                "https://streamx741.com/",
-                "/json/agenda550.json?nocache=${Date().time}",
+                SiteKey.CANALESDEPORTIVOS,
+                "https://canalesdeportivos.net",
+                "https://canalesdeportivos.net/partidos.json?v=${Date().time}"
             ),
         )
     override var name = "DeporTV"
@@ -136,7 +156,7 @@ class DeporTVProvider : MainAPI() {
             }
             var res: NiceResponse? = null;
             try {
-                res = app.get(url, timeout = 5)
+                res = app.get(url, timeout = 5, referer = it.mainUrl)
             } catch (e: Exception) {
             }
             var events: List<EventData> = emptyList()
@@ -156,7 +176,6 @@ class DeporTVProvider : MainAPI() {
                             )
                         } ?: emptyList()
                 } else if (it.key.equals(SiteKey.TVTVHD)) {
-                    Log.d("qwerty", "json: ${res.text}")
                     events = AppUtils.tryParseJson<FTVHDApiResponse>(res.text)?.data
                         ?.map {
                             val matchId =
@@ -171,7 +190,20 @@ class DeporTVProvider : MainAPI() {
                                 matchId.poster
                             )
                         } ?: emptyList()
-                    Log.d("qwerty", "getMainPage: $events")
+                } else if (it.key.equals(SiteKey.CANALESDEPORTIVOS)) {
+                    events = AppUtils.tryParseJson<List<PartidoJson>>(res.text)
+                        ?.map { partido ->
+                            val matchId = streamedInfo.searchPosterByTitle(partido.equipos)
+                            val hour = transformUtcToLocal(partido.hora_utc)
+                            EventData(
+                                matchId.title,
+                                hour ?: "00:00",
+                                partido.canales.map { canal ->
+                                    if (canal.url.startsWith("http")) canal.url else "${it.mainUrl}${canal.url}"
+                                },
+                                matchId.poster
+                            )
+                        } ?: emptyList()
                 } else {
                     events = res.document.select(".menu > li")
                         .mapNotNull { it.rusticoToEventData(url) }
@@ -503,8 +535,44 @@ class DeporTVProvider : MainAPI() {
                     }
 
                 }
+            } else if (frame.startsWith("https://canalesdeportivos.net/ver/") || frame.startsWith("https://elcanaldeportivo.com/ver/")) {
+                    val name = frame.substringAfterLast("/").substringBefore(".php")
+                    val doc = app.get(frame).document
+                    val iframeSrc = doc.selectFirst("iframe")?.attr("src")
+                    if (iframeSrc != null) {
+                        val resolvedUrl = if (iframeSrc.startsWith("http")) iframeSrc
+                        else "https://${URL(frame).host}${iframeSrc}"
+                        val fidDoc = app.get(resolvedUrl).document
+                        val fid = fidDoc.select("script").firstOrNull { it.data().contains("fid=") }
+                            ?.data()?.substringAfter("fid=\"")?.substringBefore("\"")
+                        if (fid != null) {
+                            val deepUrl = "https://deepcathink.com/deportivo.php?player=desktop&live=$fid"
+                            val deepText = app.get(deepUrl).text
+                            val arrayMatch = Regex("""return\(\s*\[([^\]]+)\]""").find(deepText)
+                            if (arrayMatch != null) {
+                                val elements = Regex(""""([^"]*)"""").findAll(arrayMatch.groupValues[1])
+                                    .map { it.groupValues[1] }
+                                    .toList()
+                                val m3u8Url = elements.joinToString("").replace("\\/", "/")
+                                Log.d("qwerty", "loadLinks: $m3u8Url")
+                                if (m3u8Url.isNotBlank() && m3u8Url.contains(".m3u8")) {
+                                    callback(
+                                        newExtractorLink(
+                                            "CanalesDeportivos[$name]",
+                                            "CanalesDeportivos[$name]",
+                                            m3u8Url,
+                                        ) {
+                                            this.quality = Qualities.Unknown.value
+                                            this.referer = "https://deepcathink.com/"
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
 
             }
+
         }
         return true
     }
@@ -576,6 +644,19 @@ fun transformHourToDate(hourString: String): Date? {
     calendarToday.set(Calendar.SECOND, 0)
     calendarToday.set(Calendar.MILLISECOND, 0)
     return calendarToday.time
+}
+
+fun transformUtcToLocal(isoUtc: String): String? {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val date = inputFormat.parse(isoUtc)
+        val outputFormat = SimpleDateFormat("HH:mm", Locale.US)
+        outputFormat.timeZone = TimeZone.getDefault()
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        null
+    }
 }
 
 fun transformHourToLocal(hourString: String, timezoneId: String? = null): String {
