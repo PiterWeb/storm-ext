@@ -63,7 +63,7 @@ class StreamedInfo {
             val hourString = hourFormat.format(Date(it.date))
             val hour = transformHourToLocal(hourString);
             MatchId(it.title, it.poster?.replaceFirst("^/".toRegex(), "$mainUrl/"), hour)
-        } ?: MatchId(title)
+        } ?: MatchId(searchHome+" vs "+searchAway)
     }
 }
 

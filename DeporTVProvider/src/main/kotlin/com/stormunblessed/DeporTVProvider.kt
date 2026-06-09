@@ -197,7 +197,7 @@ class DeporTVProvider : MainAPI() {
                             val hour = transformUtcToLocal(partido.hora_utc)
                             EventData(
                                 matchId.title,
-                                hour ?: "00:00",
+                                matchId.hour ?: hour,
                                 partido.canales.map { canal ->
                                     if (canal.url.startsWith("http")) canal.url else "${it.mainUrl}${canal.url}"
                                 },
@@ -646,19 +646,6 @@ fun transformHourToDate(hourString: String): Date? {
     return calendarToday.time
 }
 
-fun transformUtcToLocal(isoUtc: String): String? {
-    return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
-        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
-        val date = inputFormat.parse(isoUtc)
-        val outputFormat = SimpleDateFormat("HH:mm", Locale.US)
-        outputFormat.timeZone = TimeZone.getDefault()
-        outputFormat.format(date)
-    } catch (e: Exception) {
-        null
-    }
-}
-
 fun transformHourToLocal(hourString: String, timezoneId: String? = null): String {
     val inputFormat = SimpleDateFormat("HH:mm", Locale.US)
     inputFormat.timeZone =
@@ -667,6 +654,19 @@ fun transformHourToLocal(hourString: String, timezoneId: String? = null): String
     val outputFormat = SimpleDateFormat("HH:mm", Locale.US)
     outputFormat.timeZone = TimeZone.getDefault() // current mobile timezone
     return outputFormat.format(date)
+}
+
+fun transformUtcToLocal(isoUtc: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+        inputFormat.timeZone = TimeZone.getTimeZone("UTC")
+        val date = inputFormat.parse(isoUtc)
+        val outputFormat = SimpleDateFormat("HH:mm", Locale.US)
+        outputFormat.timeZone = TimeZone.getDefault()
+        outputFormat.format(date)
+    } catch (e: Exception) {
+        "00:00"
+    }
 }
 
 fun isEventLive(startHour: String): Boolean {

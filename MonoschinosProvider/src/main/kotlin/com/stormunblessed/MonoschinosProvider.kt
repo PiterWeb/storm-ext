@@ -4,195 +4,142 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
-import java.util.*
-import kotlin.collections.ArrayList
-
+import org.jsoup.nodes.Element
 
 class MonoschinosProvider : MainAPI() {
-    companion object {
-        fun getType(t: String): TvType {
-            return if (t.contains("OVA") || t.contains("Especial")) TvType.OVA
-            else if (t.contains("Pelicula")) TvType.AnimeMovie
-            else TvType.Anime
-        }
-
-        fun getDubStatus(title: String): DubStatus {
-            return if (title.contains("Latino") || title.contains("Castellano"))
-                DubStatus.Dubbed
-            else DubStatus.Subbed
-        }
-
-        var latestCookie: Map<String, String> = emptyMap()
-        var latestToken = ""
-
-
-    }
-
-    override var mainUrl = "https://monoschinos2.com"
+    override var mainUrl = "https://monoschinos.st"
     override var name = "Monoschinos"
-    override var lang = "es"
+    override var lang = "mx"
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
+    override val hasQuickSearch = true
     override val supportedTypes = setOf(
-            TvType.AnimeMovie,
-            TvType.OVA,
-            TvType.Anime,
+        TvType.Anime,
+        TvType.AnimeMovie,
+        TvType.OVA,
     )
 
-    private suspend fun getToken(url: String): Map<String, String> {
-        val maintas = app.get(url)
-        val token = maintas.document.selectFirst("html head meta[name=csrf-token]")?.attr("content") ?: ""
-        val cookies = maintas.cookies
-        latestToken = token
-        latestCookie = cookies
-        return latestCookie
-    }
+    override val mainPage = mainPageOf(
+        "" to "Últimos capítulos",
+        "animes" to "Catálogo",
+    )
 
-
-    override suspend fun getMainPage(page: Int, request : MainPageRequest): HomePageResponse {
-        val urls = listOf(
-                Pair("$mainUrl/emision", "Estrenos 2024"),
-                Pair("$mainUrl/animes", "Animes"),
-        )
-        val items = ArrayList<HomePageList>()
-        val isHorizontal = true
-        items.add(
-                HomePageList(
-                        "Capítulos actualizados",
-                        app.get(mainUrl, timeout = 120).document.select(".row-cols-xl-4 li article").map {
-                            val title = it.selectFirst("h2")?.text() ?: it.selectFirst("h2.text-truncate")?.text() ?: ""
-                            val poster =
-                                    it.selectFirst("img")?.attr("data-src") ?: ""
-
-                            val epRegex = Regex("episodio-(\\d+)")
-                            val url = it.selectFirst("a")?.attr("href")!!.replace("ver/", "anime/")
-                                    .replace(epRegex, "sub-espanol")
-                            val epNum = (it.selectFirst("article span.episode")?.text() ?: it.selectFirst("div.positioning p")?.text())?.toIntOrNull()
-                            newAnimeSearchResponse(title, url) {
-                                this.posterUrl = fixUrl(poster)
-                                addDubStatus(getDubStatus(title), epNum)
-                            }
-                        }, isHorizontal)
-        )
-
-        urls.amap { (url, name) ->
-
-            val home = app.get(url, timeout = 120).document.select("li.col").map {
-                val title = it.selectFirst("h3")!!.text()
-                val poster =
-                        it.selectFirst("img")?.attr("data-src")
-                                ?: ""
-
-                newAnimeSearchResponse(title, fixUrl(it.selectFirst("a")!!.attr("href"))) {
-                    this.posterUrl = fixUrl(poster)
-                    addDubStatus(getDubStatus(title))
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
+        if (request.data == "") {
+            val doc = app.get(mainUrl, timeout = 120).document
+            val latest = doc.select("ul.row.row-cols-xl-4 li.col article").map { article ->
+                val title = article.selectFirst("h2")?.text() ?: ""
+                val href = fixUrl(article.selectFirst("a")?.attr("href") ?: "")
+                val poster = article.selectFirst("img")?.attr("data-src") ?: ""
+                val ep = article.selectFirst("span.episode")?.text()?.toIntOrNull()
+                newAnimeSearchResponse(title, href, TvType.Anime) {
+                    this.posterUrl = fixUrlNull(poster)
+                    addDubStatus(DubStatus.Subbed, ep)
                 }
             }
-
-            items.add(HomePageList(name, home))
+            return newHomePageResponse(
+                list = HomePageList(request.name, latest, isHorizontalImages = true),
+                hasNext = false
+            )
         }
+        val url = if (page <= 1) "$mainUrl/animes" else "$mainUrl/animes?p=$page"
+        val doc = app.get(url, timeout = 120).document
+        val home = doc.select("ul.row li.col a").mapNotNull { it.toSearchResult() }
+        val hasNext = doc.selectFirst("a.page-link[rel=next]") != null
+        return newHomePageResponse(
+            list = HomePageList(request.name, home, isHorizontalImages = false),
+            hasNext = hasNext
+        )
+    }
 
-        if (items.size <= 0) throw ErrorLoadingException()
-        return newHomePageResponse(items)
+    private fun Element.toSearchResult(): SearchResponse? {
+        val title = this.selectFirst("h3")?.text() ?: return null
+        val href = this.attr("href")
+        val poster = this.selectFirst("img")?.attr("data-src") ?: ""
+        return newAnimeSearchResponse(title, href, TvType.Anime) {
+            this.posterUrl = fixUrlNull(poster)
+        }
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return app.get("$mainUrl/buscar?q=$query", timeout = 120).document.select("li.col article").map {
-            val title = it.selectFirst("h3")!!.text()
-            val href = fixUrl(it.selectFirst("a")!!.attr("href"))
-            val image = it.selectFirst("img")!!.attr("data-src")
-            newAnimeSearchResponse(
-                    title,
-                    href,
-                    TvType.Anime,
-            ){
-                this.posterUrl = fixUrl(image)
-                this.dubStatus = if (title.contains("Latino") || title.contains("Castellano")) EnumSet.of(
-                            DubStatus.Dubbed
-                    ) else EnumSet.of(DubStatus.Subbed)
-
-            }
-        }
+        val doc = app.get("$mainUrl/buscar?q=$query", timeout = 120).document
+        return doc.select("ul.row li.col a").mapNotNull { it.toSearchResult() }
     }
 
     data class CapList(
-            @JsonProperty("eps")val eps: List<Ep>,
+        @JsonProperty("eps") val eps: List<Ep>,
     )
 
     data class Ep(
-            val num: Int?,
+        @JsonProperty("num") val num: Int? = null,
     )
 
-    override suspend fun load(url: String): LoadResponse {
-        getToken(url)
-        val doc = app.get(url, timeout = 120).document
-        val caplist = doc.selectFirst(".caplist")!!.attr("data-ajax")
-        val poster = doc.selectFirst("img.w-100")!!.attr("data-src")
-        val backimage = doc.selectFirst("img.rounded-3")!!.attr("data-src")
-        val title = doc.selectFirst(".fs-2")!!.text()
-        val type = doc.selectFirst("div.bg-transparent > dl:nth-child(1) > dd:nth-child(2)")?.text() ?: ""
-        val description = doc.selectFirst("div.mb-3")!!.text().replace("Ver menos", "")
-        val genres = doc.select(".my-4 > div a span").map { it.text() }
-        val status = when (doc.selectFirst("div.col:nth-child(1) > div:nth-child(1) > div")?.text()) {
-            "Estreno" -> ShowStatus.Ongoing
-            "Finalizado" -> ShowStatus.Completed
+    override suspend fun load(url: String): LoadResponse? {
+        val resp = app.get(url, timeout = 120)
+        val doc = resp.document
+        val cookies = resp.cookies
+
+        val title = doc.selectFirst("h1.fs-2")?.text() ?: return null
+        val poster = doc.selectFirst("meta[property=og:image]")?.attr("content")
+        val backimage = doc.selectFirst("img[style*='blur']")?.attr("data-src")
+        val plot = doc.selectFirst("#profile-tab-pane p")?.text() ?: doc.selectFirst("meta[property=og:description]")?.attr("content")
+
+        val typeText = doc.select("div.col-12.col-md-3 dl dd").firstOrNull()?.text() ?: ""
+        val tvType = when {
+            typeText.contains("Pelicula") -> TvType.AnimeMovie
+            typeText.contains("OVA") || typeText.contains("Especial") -> TvType.OVA
+            else -> TvType.Anime
+        }
+
+        val tags = doc.select("a[href^='/genero/'] span.badge").map { it.text() }
+
+        val status = when {
+            doc.text().contains("Estreno") -> ShowStatus.Ongoing
+            doc.text().contains("Finalizado") -> ShowStatus.Completed
             else -> null
         }
-        val capJson = app.post(caplist,
-                headers = mapOf(
-                        "Host" to "monoschinos2.com",
-                        "User-Agent" to USER_AGENT,
-                        "Accept" to "application/json, text/javascript, */*; q=0.01",
-                        "Accept-Language" to "en-US,en;q=0.5",
-                        "Referer" to url,
-                        "Content-Type" to "application/x-www-form-urlencoded; charset=UTF-8",
-                        "X-Requested-With" to "XMLHttpRequest",
-                        "Origin" to mainUrl,
-                        "DNT" to "1",
-                        "Alt-Used" to "monoschinos2.com",
-                        "Connection" to "keep-alive",
-                        "Sec-Fetch-Dest" to "empty",
-                        "Sec-Fetch-Mode" to "cors",
-                        "Sec-Fetch-Site" to "same-origin",
-                        "TE" to "trailers"
-                ),
-                cookies = latestCookie,
-               data = mapOf("_token" to latestToken)).parsed<CapList>()
 
-        val epList = capJson.eps.map { epnum ->
-            val epUrl = "${url.replace("-sub-espanol","").replace("/anime/","/ver/")}-episodio-${epnum.num}"
-            newEpisode(
-                    epUrl
-            ){
-                this.episode = epnum.toString().toIntOrNull()
+        val token = doc.selectFirst("meta[name=csrf-token]")?.attr("content") ?: ""
+        val caplistUrl = doc.selectFirst("section.caplist")?.attr("data-ajax") ?: ""
+
+        val episodes = if (caplistUrl.isNotBlank() && token.isNotBlank()) {
+            try {
+                val capJson = app.post(caplistUrl, data = mapOf("_token" to token), cookies = cookies).parsed<CapList>()
+                capJson.eps.mapNotNull { ep ->
+                    val epNum = ep.num ?: return@mapNotNull null
+                    val epUrl = url.replace("-sub-espanol", "").replace("/anime/", "/ver/") + "-episodio-$epNum"
+                    newEpisode(epUrl) {
+                        this.episode = epNum
+                    }
+                }
+            } catch (e: Exception) {
+                emptyList()
             }
+        } else {
+            emptyList()
         }
 
-
-
-        return newAnimeLoadResponse(title, url, getType(type)) {
-            posterUrl = poster
-            backgroundPosterUrl = backimage
-            addEpisodes(DubStatus.Subbed, epList)
-            showStatus = status
-            plot = description
-            tags = genres
+        return newAnimeLoadResponse(title, url, tvType) {
+            this.posterUrl = poster
+            this.backgroundPosterUrl = backimage ?: poster
+            this.plot = plot
+            this.tags = tags
+            this.showStatus = status
+            addEpisodes(DubStatus.Subbed, episodes)
         }
     }
 
     override suspend fun loadLinks(
-            data: String,
-            isCasting: Boolean,
-            subtitleCallback: (SubtitleFile) -> Unit,
-            callback: (ExtractorLink) -> Unit
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
     ): Boolean {
-        app.get(data).document.select("#myTab li").amap {
-            val encodedurl = it.select(".play-video").attr("data-player")
-            val urlDecoded = base64Decode(encodedurl)
-            val url = (urlDecoded).replace("https://monoschinos2.com/reproductor?url=", "")
-                    .replace("https://sblona.com","https://watchsb.com").replace("https://swdyu.com","https://streamwish.to")
-            loadExtractor(url, mainUrl, subtitleCallback, callback)
+        val doc = app.get(data).document
+        doc.select("button.play-video").amap {
+            val url = base64Decode(it.attr("data-player"))
+            loadExtractor(url, "$mainUrl/", subtitleCallback, callback)
         }
         return true
     }
