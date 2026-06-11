@@ -70,6 +70,12 @@ data class Site(
 )
 
 class DeporTVProvider : MainAPI() {
+    companion object {
+        private var cachedEvents: List<EventData> = emptyList()
+        private var cacheTimestamp: Long = 0L
+        private const val CACHE_TTL = 60_000L // 1 minute
+    }
+
     override var mainUrl = ""
 
     val sites: List<Site> =
@@ -210,12 +216,11 @@ class DeporTVProvider : MainAPI() {
                 }
             }
             events
-        }.flatten();
+        }.flatten()
 
-        val mergedEvents: List<EventData> = agendaData
+        cachedEvents = agendaData
             .groupBy { it.title.substringAfter(":").trim() }
             .amap { (title, events) ->
-                val date = transformHourToDate(events.first().hour) ?: Date()
                 val posterUrl = events.first().poster ?: defaultPoster
                 EventData(
                     title = title,
@@ -224,27 +229,22 @@ class DeporTVProvider : MainAPI() {
                     poster = posterUrl
                 )
             }.sortedBy { it.hour.substringBefore(":").toIntOrNull() }
+        cacheTimestamp = Date().time
 
-        val live = mergedEvents.filter { isEventLive(it.hour) }
-        val items = ArrayList<HomePageList>()
-        items.add(
-            HomePageList(
-                name = "En Vivo",
-                list = live.map { it.toSearchResult() },
-                isHorizontalImages = true
-            )
-        )
-        items.add(
-            HomePageList(
-                name = request.name,
-                list = mergedEvents.map { it.toSearchResult() },
-                isHorizontalImages = true
-            )
-        )
+        val live = cachedEvents.filter { isEventLive(it.hour) }
         return newHomePageResponse(
-            list = items,
+            list = listOf(
+                HomePageList("En Vivo", live.map { it.toSearchResult() }, isHorizontalImages = true),
+                HomePageList(request.name, cachedEvents.map { it.toSearchResult() }, isHorizontalImages = true),
+            ),
             hasNext = false
         )
+    }
+
+    override suspend fun search(query: String): List<SearchResponse> {
+        return cachedEvents
+            .filter { it.title.contains(query, ignoreCase = true) }
+            .map { it.toSearchResult() }
     }
 
     private fun Element.rusticoToEventData(mainUrl: String): EventData? {

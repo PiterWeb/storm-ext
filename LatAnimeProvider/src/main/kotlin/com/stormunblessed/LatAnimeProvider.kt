@@ -1,14 +1,9 @@
 package com.lagradost.cloudstream3.animeproviders
 
-import android.util.Log
 import com.lagradost.cloudstream3.*
-import com.lagradost.cloudstream3.network.CloudflareKiller
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
-import com.lagradost.nicehttp.NiceResponse
-import com.lagradost.cloudstream3.utils.loadExtractor
 import java.util.*
-
 
 class LatAnimeProvider : MainAPI() {
     companion object {
@@ -31,109 +26,75 @@ class LatAnimeProvider : MainAPI() {
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
+    override val hasQuickSearch = true
     override val supportedTypes = setOf(
-            TvType.AnimeMovie,
-            TvType.OVA,
-            TvType.Anime,
+        TvType.AnimeMovie,
+        TvType.OVA,
+        TvType.Anime,
     )
-
-    private val cloudflareKiller = CloudflareKiller()
-    suspend fun appGetChildMainUrl(url: String): NiceResponse {
-//        return app.get(url, interceptor = cloudflareKiller )
-        return app.get(url)
-    }
 
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
         val urls = listOf(
-                Pair("$mainUrl/emision", "En emisión"),
-                Pair(
-                        "$mainUrl/animes?fecha=false&genero=false&letra=false&categoria=Película",
-                        "Peliculas"
-                ),
-                Pair("$mainUrl/animes", "Animes"),
+            Pair("$mainUrl/emision", "En emisión"),
+            Pair("$mainUrl/animes?fecha=false&genero=false&letra=false&categoria=Película", "Peliculas"),
+            Pair("$mainUrl/animes", "Animes"),
         )
 
         val items = ArrayList<HomePageList>()
-        val isHorizontal = true
-//        items.add(
-//                HomePageList(
-//                        "Capítulos actualizados",
-//                        appGetChildMainUrl(mainUrl).document.select(".col-6").map {
-//                            val title = it.selectFirst("p.animetitles")?.text()
-//                                    ?: it.selectFirst(".animetitles")?.text() ?: ""
-//                            val poster =
-//                                    it.selectFirst("img")?.attr("data-src") ?: ""
-//
-//                            val epRegex = Regex("episodio-(\\d+)")
-//                            val url = it.selectFirst("a")?.attr("href")!!.replace("ver/", "anime/")
-//                                    .replace(epRegex, "sub-espanol")
-//                            val epNum = (it.selectFirst(".positioning h5")?.text()
-//                                    ?: it.selectFirst("div.positioning p")?.text())?.toIntOrNull()
-//                            newAnimeSearchResponse(title, url) {
-//                                this.posterUrl = fixUrl(poster)
-//                                addDubStatus(getDubStatus(title), epNum)
-//                                this.posterHeaders = if (poster.contains(mainUrl)) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap<String, String>()
-//                            }
-//                        }, isHorizontal)
-//        )
 
         urls.amap { (url, name) ->
-            val home = appGetChildMainUrl(url).document.select("html body div.container div.row div.col-md-4.col-lg-3.col-xl-2.col-6.my-3").map {
-                val title = it.selectFirst("div.col-md-4.col-lg-3.col-xl-2.col-6.my-3 a div.series div.seriedetails h3.my-1")!!.text()
-                val imgElement = it.selectFirst("div.col-md-4.col-lg-3.col-xl-2.col-6.my-3 a div.series div.serieimg.shadown img.img-fluid2.shadow-sm")
-                val poster =
-                        if(imgElement?.attr("data-src")?.isEmpty() == false)
-                            imgElement.attr("data-src") else
-                                imgElement?.attr("src") ?: ""
-
-                newAnimeSearchResponse(title, fixUrl(it.selectFirst("a")!!.attr("href"))) {
+            val home = app.get(url).document.select(".col-6.my-3").mapNotNull { el ->
+                val title = el.selectFirst("h3.my-1")?.text() ?: return@mapNotNull null
+                val imgEl = el.selectFirst("img.img-fluid2")
+                val poster = imgEl?.attr("data-src")?.ifEmpty { imgEl.attr("src") } ?: ""
+                val href = el.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+                newAnimeSearchResponse(title, fixUrl(href)) {
                     this.posterUrl = fixUrl(poster)
                     addDubStatus(getDubStatus(title))
-                    this.posterHeaders = if (poster.contains(mainUrl)) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap<String, String>()
                 }
             }
-
             items.add(HomePageList(name, home))
         }
 
-        if (items.size <= 0) throw ErrorLoadingException()
+        if (items.isEmpty()) throw ErrorLoadingException()
         return newHomePageResponse(items)
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        return appGetChildMainUrl("$mainUrl/buscar?q=$query").document.select("html body div.container div.row div.col-md-4.col-lg-3.col-xl-2.col-6.my-3").map {
-            val title = it.selectFirst("a div.series div.seriedetails h3.my-1")!!.text()
-            val href = fixUrl(it.selectFirst("a")!!.attr("href"))
-            val image = it.selectFirst("a div.series div.serieimg.shadown img.img-fluid2.shadow-sm")!!.attr("src")
-            newAnimeSearchResponse(title, href, TvType.Anime){
+        return app.get("$mainUrl/buscar?q=$query").document.select(".col-6.my-3").mapNotNull { el ->
+            val title = el.selectFirst("h3.my-1")?.text() ?: return@mapNotNull null
+            val href = el.selectFirst("a")?.attr("href") ?: return@mapNotNull null
+            val imgEl = el.selectFirst("img.img-fluid2")
+            val image = imgEl?.attr("data-src")?.ifEmpty { imgEl.attr("src") } ?: ""
+            newAnimeSearchResponse(title, fixUrl(href), TvType.Anime) {
                 this.posterUrl = fixUrl(image)
                 this.dubStatus = if (title.contains("Latino") || title.contains("Castellano")) EnumSet.of(
-                            DubStatus.Dubbed
-                    ) else EnumSet.of(DubStatus.Subbed)
-//                this.posterHeaders = if (image.contains(mainUrl)) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap<String, String>()
+                    DubStatus.Dubbed
+                ) else EnumSet.of(DubStatus.Subbed)
             }
         }
     }
 
     override suspend fun load(url: String): LoadResponse? {
-        val doc = appGetChildMainUrl(url).document
-        val poster = doc.selectFirst("div.col-lg-3.col-md-4 div.series2 div.serieimgficha img.img-fluid2")!!.attr("src")
-        val backimage = doc.selectFirst("div.container div.row div.row div a div img")!!.attr("data-src")
-        val title = doc.selectFirst("div.col-lg-9.col-md-8 h2")!!.text()
-        val type = doc.selectFirst("div.chapterdetls2")?.text() ?: ""
-        val description = doc.selectFirst("div.col-lg-9.col-md-8 p.my-2.opacity-75")!!.text().replace("Ver menos", "")
-        val genres = doc.select("div.col-lg-9.col-md-8 a div.btn").map { it.text() }
-        val status = when (doc.selectFirst("div.col-lg-3.col-md-4 div.series2 div.serieimgficha div.my-2")?.text()) {
+        val doc = app.get(url).document
+        val poster = doc.selectFirst("div.serieimgficha img.img-fluid2")?.attr("src")
+            ?: doc.selectFirst("div.serieimgficha img.img-fluid2")?.attr("data-src") ?: ""
+        val backimage = doc.selectFirst("div.row div a div img")?.attr("data-src")
+            ?: doc.selectFirst("div.row div a div img")?.attr("src") ?: ""
+        val title = doc.selectFirst("h2")?.text() ?: return null
+        val type = doc.selectFirst(".chapterdetls2")?.text() ?: ""
+        val description = doc.selectFirst("p.my-2.opacity-75")?.text()?.replace("Ver menos", "") ?: ""
+        val genres = doc.select("div.btn").mapNotNull { it.text().trim().takeIf { g -> g.isNotEmpty() } }
+        val status = when (doc.selectFirst("div.serieimgficha div.my-2")?.text()) {
             "Estreno" -> ShowStatus.Ongoing
             "Finalizado" -> ShowStatus.Completed
             else -> null
         }
-        val episodes = doc.select("div.container div.row div.row div a").map {
-            val name = it.selectFirst("div.cap-layout")!!.text()
-            val link = it!!.attr("href")
-            val epThumb = it.selectFirst("div img")?.attr("data-src")
-                    ?: it.selectFirst("div img")?.attr("src")
-            newEpisode(link){
+        val episodes = doc.select("div.row div a[href*=/ver/]").mapNotNull { el ->
+            val name = el.selectFirst(".cap-layout")?.text() ?: return@mapNotNull null
+            val link = el.attr("href")
+            val epThumb = el.selectFirst("img")?.attr("data-src") ?: el.selectFirst("img")?.attr("src") ?: ""
+            newEpisode(link) {
                 this.name = name
                 this.posterUrl = epThumb
             }
@@ -145,7 +106,6 @@ class LatAnimeProvider : MainAPI() {
             showStatus = status
             plot = description
             tags = genres
-            posterHeaders = if (poster.contains(mainUrl)) cloudflareKiller.getCookieHeaders(mainUrl).toMap() else emptyMap<String, String>()
         }
     }
 
@@ -153,28 +113,27 @@ class LatAnimeProvider : MainAPI() {
         url: String,
         referer: String?,
         subtitleCallback: (SubtitleFile) -> Unit,
-        callback: (ExtractorLink) -> Unit)
-    {
+        callback: (ExtractorLink) -> Unit
+    ) {
         loadExtractor(url
             .replaceFirst("https://hglink.to", "https://streamwish.to")
-            .replaceFirst("https://swdyu.com","https://streamwish.to")
+            .replaceFirst("https://swdyu.com", "https://streamwish.to")
             .replaceFirst("https://mivalyo.com", "https://vidhidepro.com")
             .replaceFirst("https://filemoon.link", "https://filemoon.sx")
             .replaceFirst("https://sblona.com", "https://watchsb.com")
-            , referer, subtitleCallback, callback)
+            , null, subtitleCallback, callback)
     }
 
     override suspend fun loadLinks(
-            data: String,
-            isCasting: Boolean,
-            subtitleCallback: (SubtitleFile) -> Unit,
-            callback: (ExtractorLink) -> Unit
+        data: String,
+        isCasting: Boolean,
+        subtitleCallback: (SubtitleFile) -> Unit,
+        callback: (ExtractorLink) -> Unit
     ): Boolean {
-        appGetChildMainUrl(data).document.select("li#play-video").amap {
+        app.get(data).document.select("li#play-video").amap {
             val encodedurl = it.select("a").attr("data-player")
             val urlDecoded = base64Decode(encodedurl)
-            Log.d("debugiando", "urlDecoded: $urlDecoded")
-            val url = (urlDecoded)
+            val url = urlDecoded
                 .replace("https://monoschinos2.com/reproductor?url=", "")
                 .replace("https://mojon.latanime.org/aqua/fn?url=", "")
             customLoadExtractor(url, mainUrl, subtitleCallback, callback)

@@ -25,6 +25,7 @@ class DoramasFlixProvider:MainAPI() {
     override var name = "Doramasflix"
     override var lang = "mx"
     override val hasMainPage = true
+    override val hasQuickSearch = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
     override val supportedTypes = setOf(
