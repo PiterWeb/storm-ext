@@ -594,27 +594,27 @@ class DeporTVProvider : MainAPI() {
                             ?.data()?.substringAfter("fid=\"")?.substringBefore("\"")
                         if (fid != null) {
                             val deepUrl = "https://deepcathink.com/deportivo.php?player=desktop&live=$fid"
-                            val deepText = app.get(deepUrl).text
-                            val arrayMatch = Regex("""return\(\s*\[([^\]]+)\]""").find(deepText)
-                            if (arrayMatch != null) {
-                                val elements = Regex(""""([^"]*)"""").findAll(arrayMatch.groupValues[1])
-                                    .map { it.groupValues[1] }
-                                    .toList()
-                                val m3u8Url = elements.joinToString("").replace("\\/", "/")
-                                Log.d("qwerty", "loadLinks: $m3u8Url")
-                                if (m3u8Url.isNotBlank() && m3u8Url.contains(".m3u8")) {
-                            callback(
-                                newExtractorLink(
-                                    "CanalesDeportivos[$name]",
-                                    "CanalesDeportivos[$name]",
-                                            m3u8Url,
-                                ) {
-                                    this.quality = Qualities.Unknown.value
-                                    this.referer = "https://deepcathink.com/"
-                                }
-                            )
-                        }
-                    }
+                            val deepText = app.get(deepUrl, referer = frame).text
+                            val m3u8Url = extractDeepCathinkUrl(deepText)
+                            if (m3u8Url != null) {
+                                callback(
+                                    newExtractorLink(
+                                        "CanalesDeportivos[$name]",
+                                        "CanalesDeportivos[$name]",
+                                        m3u8Url,
+                                    ) {
+                                        this.quality = Qualities.Unknown.value
+                                        this.referer = "https://deepcathink.com/"
+                                    }
+                                )
+                            }
+                        } else {
+                            val directFrame = fidDoc.selectFirst("iframe")?.attr("src")
+                            if (directFrame != null) {
+                                val embedUrl = if (directFrame.startsWith("http")) directFrame
+                                else "https://${URL(resolvedUrl).host}$directFrame"
+                                loadExtractor(embedUrl, referer = resolvedUrl, subtitleCallback, callback)
+                            }
                         }
                     }
 
@@ -622,6 +622,15 @@ class DeporTVProvider : MainAPI() {
 
         }
         return true
+    }
+
+    private fun extractDeepCathinkUrl(html: String): String? {
+        val fnName = Regex("""player\.load\(\{source:\s*(\w+)\(\)""").find(html)?.groupValues?.get(1) ?: return null
+        val fnDef = Regex("""function\s+$fnName\s*\(\s*\)\s*\{([^}]+)\}""").find(html)?.value ?: return null
+        val arrayStr = Regex("""\[("[^"]*"(,"[^"]*")*)\]""").find(fnDef)?.value ?: return null
+        val chars = Regex("\"([^\"]*)\"").findAll(arrayStr).map { it.groupValues[1] }.toList()
+        val url = chars.joinToString("").replace("\\/", "/")
+        return url.takeIf { it.startsWith("http") && it.contains(".m3u8") }
     }
 }
 
