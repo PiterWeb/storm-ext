@@ -63,6 +63,38 @@ data class CanalInfo(
     val calidad: String
 )
 
+data class StreamTPEvent(
+    val id: Int?,
+    val category: String?,
+    val title: String?,
+    val time: String?,
+    val flags: List<String>?,
+    val links: List<StreamTPLink>?
+)
+
+data class StreamTPLink(
+    val lang: StreamTPLang?,
+    val quality: StreamTPQuality?,
+    val server: String?,
+    val bitrate: String?,
+    val url: String?,
+    val status: String?
+)
+
+data class StreamTPLang(
+    val code: String?,
+    val label: String?
+)
+
+data class StreamTPQuality(
+    val type: String?,
+    val label: String?
+)
+
+data class StreamTPResponse(
+    val events: List<StreamTPEvent>?
+)
+
 data class Site(
     val key: SiteKey,
     val mainUrl: String,
@@ -102,8 +134,8 @@ class DeporTVProvider : MainAPI() {
             ),
             Site(
                 SiteKey.STREAMTP,
-                "https://streamtp-abc.net",
-                "/eventos.json?nocache=${Date().time}"
+                "https://streamtpday1.xyz",
+                "/wc.json?_=${Date().time}"
             ),
             Site(
                 SiteKey.STREAMXX,
@@ -167,8 +199,23 @@ class DeporTVProvider : MainAPI() {
             }
             var events: List<EventData> = emptyList()
             if (res != null) {
-                if (it.key.equals(SiteKey.LA14HD)
-                    || it.key.equals(SiteKey.STREAMTP)
+                if (it.key.equals(SiteKey.STREAMTP)) {
+                    events = AppUtils.tryParseJson<StreamTPResponse>(res.text)?.events
+                        ?.flatMap { event ->
+                            val title = event.title ?: return@flatMap emptyList()
+                            val time = event.time ?: "00:00"
+                            val matchId = streamedInfo.searchPosterByTitle(title)
+                            val urls = event.links?.mapNotNull { link -> link.url } ?: emptyList()
+                            listOf(
+                                EventData(
+                                    matchId.title,
+                                    matchId.hour ?: transformHourToLocal(time, "GMT-5"),
+                                    urls,
+                                    matchId.poster
+                                )
+                            )
+                        } ?: emptyList()
+                } else if (it.key.equals(SiteKey.LA14HD)
                     || it.key.equals(SiteKey.STREAMXX)
                 ) {
                     events = AppUtils.tryParseJson<List<La14HDMatchInfo>>(res.text)
@@ -315,10 +362,10 @@ class DeporTVProvider : MainAPI() {
                 )
                     .replaceFirst(
                         "https://vivolibre.org/global1.php?stream=",
-                        "https://streamtp10.com/global1.php?stream="
+                        "https://streamtpday1.xyz/global1.php?stream="
                     ).replaceFirst(
                         "https://domainmy.lat/global1.php?stream=",
-                        "https://streamtp10.com/global1.php?stream="
+                        "https://streamtpday1.xyz/global1.php?stream="
                     )
                     .replaceFirst(
                         "https://librefutbolhd.su/embed/canales.php?stream=",
@@ -556,18 +603,18 @@ class DeporTVProvider : MainAPI() {
                                 val m3u8Url = elements.joinToString("").replace("\\/", "/")
                                 Log.d("qwerty", "loadLinks: $m3u8Url")
                                 if (m3u8Url.isNotBlank() && m3u8Url.contains(".m3u8")) {
-                                    callback(
-                                        newExtractorLink(
-                                            "CanalesDeportivos[$name]",
-                                            "CanalesDeportivos[$name]",
+                            callback(
+                                newExtractorLink(
+                                    "CanalesDeportivos[$name]",
+                                    "CanalesDeportivos[$name]",
                                             m3u8Url,
-                                        ) {
-                                            this.quality = Qualities.Unknown.value
-                                            this.referer = "https://deepcathink.com/"
-                                        }
-                                    )
+                                ) {
+                                    this.quality = Qualities.Unknown.value
+                                    this.referer = "https://deepcathink.com/"
                                 }
-                            }
+                            )
+                        }
+                    }
                         }
                     }
 
@@ -631,6 +678,7 @@ fun fixHostsLinks(url: String): String {
         .replaceFirst("https://lulu.st", "https://lulustream.com")
         .replaceFirst("https://uqload.io", "https://uqload.com")
         .replaceFirst("https://do7go.com", "https://dood.la")
+        .replaceFirst("https://streamtp-x-y-z.ws", "https://streamtpday1.xyz")
 }
 
 fun transformHourToDate(hourString: String): Date? {
