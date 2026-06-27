@@ -47,6 +47,7 @@ enum class SiteKey {
     STREAMTP,
     STREAMXX,
     CANALESDEPORTIVOS,
+    ANGULISMO,
 }
 
 data class PartidoJson(
@@ -101,6 +102,29 @@ data class Site(
     val agendaUrl: String,
 )
 
+data class AngulismoResponse(
+    val events: List<AngulismoEvent>?
+)
+
+data class AngulismoEvent(
+    val id: Int?,
+    val evento: String?,
+    val fecha: String?,
+    val competencia: String?,
+    val logoUrl: String?,
+    val canales: List<AngulismoCanal>?
+)
+
+data class AngulismoCanal(
+    val name: String?,
+    val options: List<AngulismoOption>?
+)
+
+data class AngulismoOption(
+    val name: String?,
+    val iframe: String?
+)
+
 class DeporTVProvider : MainAPI() {
     companion object {
         private var cachedEvents: List<EventData> = emptyList()
@@ -136,6 +160,11 @@ class DeporTVProvider : MainAPI() {
                 SiteKey.STREAMXX,
                 "https://streamx996.one",
                 "/json/agenda550.json?nocache=${Date().time}",
+            ),
+            Site(
+                SiteKey.ANGULISMO,
+                "https://angulismotv.pages.dev",
+                "https://raw.githubusercontent.com/Aguus467/test/refs/heads/main/json.json",
             ),
             // Site(
             //     SiteKey.CANALESDEPORTIVOS,
@@ -259,6 +288,21 @@ class DeporTVProvider : MainAPI() {
                                     if (canal.url.startsWith("http")) canal.url else "${it.mainUrl}${canal.url}"
                                 },
                                 matchId.poster
+                            )
+                        } ?: emptyList()
+                } else if (it.key.equals(SiteKey.ANGULISMO)) {
+                    events = AppUtils.tryParseJson<AngulismoResponse>(res.text)?.events
+                        ?.map { evento ->
+                            val matchId = streamedInfo.searchPosterByTitle(evento.evento ?: "")
+                            val urls = evento.canales?.flatMap { canal ->
+                                canal.options?.mapNotNull { option -> option.iframe } ?: emptyList()
+                            } ?: emptyList()
+                            val time = evento.fecha?.substringAfter(" ")?.substringBeforeLast(":") ?: "00:00"
+                            EventData(
+                                matchId.title,
+                                matchId.hour ?: transformHourToLocal(time, "GMT-5"),
+                                urls,
+                                matchId.poster ?: evento.logoUrl
                             )
                         } ?: emptyList()
                 } else {
