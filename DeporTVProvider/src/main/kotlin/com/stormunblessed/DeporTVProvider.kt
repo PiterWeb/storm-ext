@@ -148,7 +148,7 @@ class DeporTVProvider : MainAPI() {
             ),
             Site(
                 SiteKey.TVTVHD,
-                "https://tvtvhd.com",
+                "https://tvhd2.com",
                 "https://pltvhd.com/diaries.json"
             ),
             Site(
@@ -262,6 +262,7 @@ class DeporTVProvider : MainAPI() {
                             )
                         } ?: emptyList()
                 } else if (it.key.equals(SiteKey.TVTVHD)) {
+                    val siteUrl = it.mainUrl
                     events = AppUtils.tryParseJson<FTVHDApiResponse>(res.text)?.data
                         ?.map {
                             val matchId =
@@ -272,7 +273,10 @@ class DeporTVProvider : MainAPI() {
                                     it.attributes.diaryHour.substringBeforeLast(":"),
                                     "GMT-5"
                                 ),
-                                it.attributes.embeds.data.map { it.attributes.embedIframe },
+                                it.attributes.embeds.data.map { embed ->
+                                    val url = embed.attributes.embedIframe
+                                    if (url.startsWith("http")) url else "$siteUrl$url"
+                                },
                                 matchId.poster
                             )
                         } ?: emptyList()
@@ -429,8 +433,15 @@ class DeporTVProvider : MainAPI() {
             if (frame.contains("canales.php?stream=") || frame.contains("canal.php?stream=")) {
                 val source = URL(frame).host
                 val name = frame.substringAfter("?stream=")
-                val url = app.get(frame, referer = it).document.selectFirst("iframe")?.attr("src") ?: frame
-                val doc = app.get(url, referer = url).document
+                val iframeSrc = app.get(frame, referer = it).document.selectFirst("iframe")?.attr("src")
+                val url = if (iframeSrc != null && iframeSrc.startsWith("http")) {
+                    iframeSrc
+                } else if (iframeSrc != null) {
+                    "https://${URL(frame).host}$iframeSrc"
+                } else {
+                    frame
+                }
+                val doc = app.get(url, referer = frame).document
                 val link =
                     doc.select("script").firstOrNull { it.data().contains("var playbackURL = ") }
                         ?.data()
