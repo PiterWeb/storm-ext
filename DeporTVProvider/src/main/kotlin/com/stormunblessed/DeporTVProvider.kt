@@ -114,12 +114,12 @@ class DeporTVProvider : MainAPI() {
         listOf(
             Site(
                 SiteKey.RUSTICO,
-                "https://rustico-tv.net",
+                "https://rusticotv.su",
                 "/agenda.php"
             ),
             Site(
                 SiteKey.FUTBOLLIBRE,
-                "https://ww.futbollibre-tv.su",
+                "https://futbol-libres.su",
                 "/agenda/"
             ),
             Site(
@@ -134,7 +134,7 @@ class DeporTVProvider : MainAPI() {
             ),
             Site(
                 SiteKey.STREAMXX,
-                "https://streamx741.com/",
+                "https://streamx996.one",
                 "/json/agenda550.json?nocache=${Date().time}",
             ),
             // Site(
@@ -178,7 +178,11 @@ class DeporTVProvider : MainAPI() {
         if (metaRedirectUrl != null) {
             return metaRedirectUrl
         }
-        return app.get(url, timeout = 5, allowRedirects = true).url
+        try {
+            return app.get(url, timeout = 5, allowRedirects = true).url
+        } catch (e: Exception) {
+            return url;
+        }
     }
 
 
