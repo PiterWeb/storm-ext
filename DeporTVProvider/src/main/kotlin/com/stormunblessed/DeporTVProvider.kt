@@ -300,7 +300,7 @@ class DeporTVProvider : MainAPI() {
                             val time = evento.fecha?.substringAfter(" ")?.substringBeforeLast(":") ?: "00:00"
                             EventData(
                                 matchId.title,
-                                matchId.hour ?: transformHourToLocal(time, "GMT-5"),
+                                matchId.hour ?: transformHourToLocal(time, "GMT-6"),
                                 urls,
                                 matchId.poster ?: evento.logoUrl
                             )
