@@ -1,6 +1,5 @@
 package com.stormunblessed
 
-import android.util.Log
 import com.lagradost.cloudstream3.app
 import com.lagradost.cloudstream3.movieproviders.transformHourToLocal
 import java.text.Normalizer
@@ -18,6 +17,296 @@ class StreamedInfo {
         this.matches = res.parsed<MatchesResult>()
     }
 
+    private val translation = mapOf(
+        // === NATIONAL TEAMS (countries) ===
+        "espana" to "spain", "espanola" to "spain",
+        "inglaterra" to "england",
+        "francia" to "france",
+        "alemania" to "germany", "alemana" to "germany",
+        "italia" to "italy",
+        "portugal" to "portugal", "portuguesa" to "portugal",
+        "paises bajos" to "netherlands", "holanda" to "netherlands",
+        "belgica" to "belgium",
+        "suiza" to "switzerland", "helvetica" to "switzerland",
+        "suecia" to "sweden",
+        "dinamarca" to "denmark",
+        "noruega" to "norway",
+        "polonia" to "poland",
+        "rusia" to "russia",
+        "ucrania" to "ukraine",
+        "turquia" to "turkey",
+        "grecia" to "greece",
+        "croacia" to "croatia",
+        "serbia" to "serbia",
+        "rumania" to "romania",
+        "hungria" to "hungary",
+        "austria" to "austria",
+        "republica checa" to "czech republic", "checa" to "czech",
+        "eslovaquia" to "slovakia",
+        "eslovenia" to "slovenia",
+        "bosnia" to "bosnia",
+        "montenegro" to "montenegro",
+        "macedonia" to "north macedonia",
+        "albania" to "albania",
+        "kosovo" to "kosovo",
+        "irlanda" to "ireland",
+        "escocia" to "scotland",
+        "gales" to "wales",
+        "irlanda del norte" to "northern ireland",
+        "japon" to "japan",
+        "corea" to "south korea", "corea del sur" to "south korea",
+        "china" to "china",
+        "india" to "india",
+        "arabia saudita" to "saudi arabia",
+        "iran" to "iran",
+        "irak" to "iraq",
+        "catar" to "qatar",
+        "emiratos arabes" to "united arab emirates",
+        "israel" to "israel",
+        "australia" to "australia",
+        "nueva zelanda" to "new zealand",
+        "brasil" to "brazil",
+        "argentina" to "argentina",
+        "uruguay" to "uruguay",
+        "paraguay" to "paraguay",
+        "colombia" to "colombia",
+        "chile" to "chile",
+        "peru" to "peru",
+        "bolivia" to "bolivia",
+        "ecuador" to "ecuador",
+        "venezuela" to "venezuela",
+        "estados unidos" to "united states", "eeuu" to "united states", "usa" to "united states",
+        "mexico" to "mexico",
+        "canada" to "canada",
+        "costa rica" to "costa rica",
+        "panama" to "panama",
+        "honduras" to "honduras",
+        "el salvador" to "el salvador",
+        "guatemala" to "guatemala",
+        "jamaica" to "jamaica",
+        "cuba" to "cuba",
+        "haiti" to "haiti",
+        "republica dominicana" to "dominican republic",
+        "trinidad y tobago" to "trinidad and tobago",
+        "marruecos" to "morocco",
+        "argelia" to "algeria",
+        "tunez" to "tunisia",
+        "egipto" to "egypt",
+        "costa de marfil" to "ivory coast",
+        "camerun" to "cameroon",
+        "senegal" to "senegal",
+        "nigeria" to "nigeria",
+        "ghana" to "ghana",
+        "sudafrica" to "south africa",
+        "angola" to "angola",
+        "cabo verde" to "cape verde",
+        "rd congo" to "dr congo", "congo" to "congo",
+        "guinea ecuatorial" to "equatorial guinea",
+        "mali" to "mali",
+        "burkina faso" to "burkina faso",
+        "zambia" to "zambia",
+        "zimbabue" to "zimbabwe",
+        "etiopia" to "ethiopia",
+        "kenia" to "kenya",
+        "uganda" to "uganda",
+        "tanzania" to "tanzania",
+        "mozambique" to "mozambique",
+        "madagascar" to "madagascar",
+        "mauritania" to "mauritania",
+        "niger" to "niger",
+        "chad" to "chad",
+        "sudan" to "sudan",
+        "sierra leona" to "sierra leone",
+        "liberia" to "liberia",
+        "guinea" to "guinea",
+        "finlandia" to "finland",
+        "islandia" to "iceland",
+        "letonia" to "latvia",
+        "lituania" to "lithuania",
+        "estonia" to "estonia",
+        "bielorrusia" to "belarus",
+        "moldavia" to "moldova",
+        "georgia" to "georgia",
+        "armenia" to "armenia",
+        "azerbaiyan" to "azerbaijan",
+        "kazajistan" to "kazakhstan",
+        "uzbekistan" to "uzbekistan",
+        "luxemburgo" to "luxembourg",
+        "malta" to "malta",
+        "chipre" to "cyprus",
+        "liechtenstein" to "liechtenstein",
+        "san marino" to "san marino",
+        "andorra" to "andorra",
+        "islas feroe" to "faroe islands",
+        "gibraltar" to "gibraltar",
+        "tailandia" to "thailand",
+        "vietnam" to "vietnam",
+        "indonesia" to "indonesia",
+        "malasia" to "malaysia",
+        "filipinas" to "philippines",
+        "singapur" to "singapore",
+        "pakistan" to "pakistan",
+        "bangladesh" to "bangladesh",
+        "barein" to "bahrain",
+        "oman" to "oman",
+        "kuwait" to "kuwait",
+        "jordania" to "jordan",
+        "libano" to "lebanon",
+        "siria" to "syria",
+        "yemen" to "yemen",
+        "corea del norte" to "north korea",
+
+        // === SOCCER CLUB TEAMS ===
+
+        // Spanish→English specific mismatches
+        "napoles" to "napoli",
+        "oporto" to "porto",
+        "psg" to "paris saint germain",
+        "b. munich" to "bayern munich", "b munich" to "bayern munich",
+        "bayer munich" to "bayern munich",
+        "inter de milan" to "inter milan",
+        "ac milan" to "milan",
+        "atletico de madrid" to "atletico madrid",
+        "barcelona sc" to "barcelona sporting club",
+        "colonia" to "koln",
+        "friburgo" to "freiburg",
+        "wolfsburgo" to "wolfsburg",
+        "augsburgo" to "augsburg",
+        "munch" to "munich", "munich" to "munich",
+        "pumas" to "unam",
+        "chivas" to "guadalajara",
+        "tigres" to "tigres uanl",
+        "rayados" to "monterrey",
+        "boca" to "boca juniors",
+        "river" to "river plate",
+        "penarol" to "penarol",
+        "colo colo" to "colo-colo",
+        "ldu" to "ldu quito", "liga de quito" to "ldu quito",
+        "junior" to "atletico junior",
+        "medellin" to "independiente medellin",
+        "cali" to "deportivo cali",
+        "tolima" to "deportes tolima",
+        "santa fe" to "independiente santa fe",
+        "equidad" to "la equidad",
+        "millonarios" to "millonarios",
+        "nacional" to "nacional",
+        "bologna" to "bologna", "bolonia" to "bologna",
+        "turin" to "torino", "torino" to "torino",
+        "genova" to "genoa", "genoa" to "genoa",
+        "napoli" to "napoli",
+        "lieja" to "standard liege",
+        "brujas" to "club brugge", "brugge" to "club brugge",
+        "copenhague" to "fc copenhagen", "copenhagen" to "fc copenhagen",
+        "estrela roja" to "red star belgrade", "crvena zvezda" to "red star belgrade",
+        "ajax" to "ajax",
+        "eindhoven" to "psv eindhoven",
+        "sporting" to "sporting cp", "sporting lisboa" to "sporting cp",
+        "shakhtar" to "shakhtar donetsk",
+        "dinamo kiev" to "dynamo kyiv", "dynamo kiev" to "dynamo kyiv",
+        "slavia praga" to "slavia prague", "sparta praga" to "sparta prague",
+        "viktoria plzen" to "viktoria plzen",
+        "olimpia" to "olympiacos", "olympiacos" to "olympiacos",
+        "midtjylland" to "fc midtjylland",
+        "bodo glimt" to "bodo/glimt",
+
+        // === NBA ===
+        "lakers" to "los angeles lakers", "la lakers" to "los angeles lakers",
+        "celtics" to "boston celtics", "bos" to "boston celtics",
+        "warriors" to "golden state warriors", "gs" to "golden state warriors", "gsw" to "golden state warriors",
+        "bulls" to "chicago bulls", "chi" to "chicago bulls",
+        "heat" to "miami heat", "mia" to "miami heat",
+        "nuggets" to "denver nuggets", "den" to "denver nuggets",
+        "bucks" to "milwaukee bucks", "mil" to "milwaukee bucks",
+        "sixers" to "philadelphia 76ers", "76ers" to "philadelphia 76ers", "phi" to "philadelphia 76ers",
+        "cavaliers" to "cleveland cavaliers", "cavs" to "cleveland cavaliers", "cle" to "cleveland cavaliers",
+        "knicks" to "new york knicks", "nyk" to "new york knicks",
+        "nets" to "brooklyn nets", "bkn" to "brooklyn nets",
+        "raptors" to "toronto raptors", "tor" to "toronto raptors",
+        "suns" to "phoenix suns", "phx" to "phoenix suns",
+        "clippers" to "la clippers", "lac" to "la clippers",
+        "spurs" to "san antonio spurs", "sas" to "san antonio spurs",
+        "grizzlies" to "memphis grizzlies", "mem" to "memphis grizzlies",
+        "pelicans" to "new orleans pelicans", "nop" to "new orleans pelicans",
+        "kings" to "sacramento kings", "sac" to "sacramento kings",
+        "mavericks" to "dallas mavericks", "mavs" to "dallas mavericks", "dal" to "dallas mavericks",
+        "rockets" to "houston rockets", "hou" to "houston rockets",
+        "jazz" to "utah jazz", "uth" to "utah jazz",
+        "thunder" to "oklahoma city thunder", "okc" to "oklahoma city thunder",
+        "timberwolves" to "minnesota timberwolves", "t-wolves" to "minnesota timberwolves",
+        "blazers" to "portland trail blazers", "trail blazers" to "portland trail blazers", "por" to "portland trail blazers",
+        "pacers" to "indiana pacers", "ind" to "indiana pacers",
+        "hornets" to "charlotte hornets", "cha" to "charlotte hornets",
+        "hawks" to "atlanta hawks", "atl" to "atlanta hawks",
+        "magic" to "orlando magic", "orl" to "orlando magic",
+        "pistons" to "detroit pistons", "det" to "detroit pistons",
+        "wizards" to "washington wizards", "was" to "washington wizards",
+
+        // === NFL ===
+        "chiefs" to "kansas city chiefs", "kc" to "kansas city chiefs",
+        "49ers" to "san francisco 49ers",
+        "eagles" to "philadelphia eagles",
+        "cowboys" to "dallas cowboys", "dal" to "dallas cowboys",
+        "patriots" to "new england patriots", "ne" to "new england patriots",
+        "packers" to "green bay packers", "gb" to "green bay packers",
+        "steelers" to "pittsburgh steelers", "pit" to "pittsburgh steelers",
+        "ravens" to "baltimore ravens", "bal" to "baltimore ravens",
+        "bills" to "buffalo bills", "buf" to "buffalo bills",
+        "bengals" to "cincinnati bengals", "cin" to "cincinnati bengals",
+        "browns" to "cleveland browns", "cle" to "cleveland browns",
+        "broncos" to "denver broncos", "den" to "denver broncos",
+        "lions" to "detroit lions", "det" to "detroit lions",
+        "texans" to "houston texans", "hou" to "houston texans",
+        "colts" to "indianapolis colts", "ind" to "indianapolis colts",
+        "jaguars" to "jacksonville jaguars", "jax" to "jacksonville jaguars",
+        "raiders" to "las vegas raiders", "lv" to "las vegas raiders",
+        "chargers" to "los angeles chargers", "lac" to "los angeles chargers",
+        "dolphins" to "miami dolphins", "mia" to "miami dolphins",
+        "vikings" to "minnesota vikings", "min" to "minnesota vikings",
+        "saints" to "new orleans saints", "no" to "new orleans saints",
+        "giants" to "new york giants", "nyg" to "new york giants",
+        "jets" to "new york jets", "nyj" to "new york jets",
+        "panthers" to "carolina panthers", "car" to "carolina panthers",
+        "rams" to "los angeles rams", "lar" to "los angeles rams",
+        "seahawks" to "seattle seahawks", "sea" to "seattle seahawks",
+        "buccaneers" to "tampa bay buccaneers", "bucs" to "tampa bay buccaneers", "tb" to "tampa bay buccaneers",
+        "titans" to "tennessee titans", "ten" to "tennessee titans",
+        "commanders" to "washington commanders", "was" to "washington commanders",
+        "cardinals" to "arizona cardinals", "ari" to "arizona cardinals",
+        "bears" to "chicago bears", "chi" to "chicago bears",
+        "falcons" to "atlanta falcons", "atl" to "atlanta falcons",
+
+        // === MLB ===
+        "yankees" to "new york yankees", "nyy" to "new york yankees",
+        "dodgers" to "los angeles dodgers", "lad" to "los angeles dodgers",
+        "red sox" to "boston red sox", "bos" to "boston red sox",
+        "astros" to "houston astros", "hou" to "houston astros",
+        "braves" to "atlanta braves", "atl" to "atlanta braves",
+        "mets" to "new york mets", "nym" to "new york mets",
+        "phillies" to "philadelphia phillies", "phi" to "philadelphia phillies",
+        "padres" to "san diego padres", "sd" to "san diego padres",
+        "cardinals" to "st. louis cardinals", "stl" to "st. louis cardinals",
+        "blue jays" to "toronto blue jays", "tor" to "toronto blue jays",
+        "mariners" to "seattle mariners", "sea" to "seattle mariners",
+        "rays" to "tampa bay rays", "tb" to "tampa bay rays",
+        "brewers" to "milwaukee brewers", "mil" to "milwaukee brewers",
+        "twins" to "minnesota twins", "min" to "minnesota twins",
+        "cubs" to "chicago cubs", "chi" to "chicago cubs",
+        "guardians" to "cleveland guardians", "cle" to "cleveland guardians",
+        "orioles" to "baltimore orioles", "bal" to "baltimore orioles",
+        "giants" to "san francisco giants", "sf" to "san francisco giants",
+        "reds" to "cincinnati reds", "cin" to "cincinnati reds",
+        "rangers" to "texas rangers", "tex" to "texas rangers",
+        "diamondbacks" to "arizona diamondbacks", "dbacks" to "arizona diamondbacks", "ari" to "arizona diamondbacks",
+        "pirates" to "pittsburgh pirates", "pit" to "pittsburgh pirates",
+        "angels" to "los angeles angels", "laa" to "los angeles angels",
+        "royals" to "kansas city royals", "kc" to "kansas city royals",
+        "tigers" to "detroit tigers", "det" to "detroit tigers",
+        "marlins" to "miami marlins", "mia" to "miami marlins",
+        "white sox" to "chicago white sox", "cws" to "chicago white sox",
+        "athletics" to "oakland athletics", "as" to "oakland athletics",
+        "rockies" to "colorado rockies", "col" to "colorado rockies",
+    )
+
     fun String.trimAndClean(): String {
         val normalized = Normalizer.normalize(this, Normalizer.Form.NFD)
         return normalized
@@ -26,49 +315,60 @@ class StreamedInfo {
             .trim().lowercase()
     }
 
-    fun String.containsAnyWordIgnoreCase(target: String): Boolean {
-        val sourceWords = this.lowercase().split("\\s+".toRegex()).toSet()
-        val targetWords = target.lowercase().split("\\s+".toRegex()).toSet()
-        return sourceWords.intersect(targetWords).isNotEmpty()
+    fun String.normalizeName(): String {
+        val n = this.trimAndClean()
+            .replace(" vs. ", " vs ").replace(" v ", " vs ")
+        val parts = n.split("\\s+".toRegex())
+        val mapped = parts.map { translation[it] ?: it }
+        return mapped.joinToString(" ")
     }
 
-    fun String.containsNoSpaces(target: String): Boolean {
-        val sourceWords = this.lowercase().replace(" ", "").split("\\s+".toRegex()).toSet()
-        val targetWords = target.lowercase().replace(" ", "").split("\\s+".toRegex()).toSet()
-        return sourceWords.intersect(targetWords).isNotEmpty()
+    fun teamMatches(teamRaw: String, searchRaw: String): Boolean {
+        val team = teamRaw.lowercase().trim()
+        val search = searchRaw.lowercase().trim()
+        if (team == search) return true
+
+        val teamN = team.normalizeName()
+        val searchN = search.normalizeName()
+        if (teamN == searchN) return true
+
+        val teamWords = teamN.split("\\s+".toRegex()).filter { it.length > 1 }
+        val searchWords = searchN.split("\\s+".toRegex()).filter { it.length > 1 }
+
+        for (tw in teamWords) {
+            for (sw in searchWords) {
+                if (tw == sw) return true
+                if (tw.length > 2 && sw.contains(tw)) return true
+                if (sw.length > 2 && tw.contains(sw)) return true
+            }
+        }
+
+        return teamWords.intersect(searchWords.toSet()).isNotEmpty()
     }
 
     fun searchPosterByTitle(title: String): MatchId {
-        val searchTitle = title.replace(" vs. ", " vs ")
-        val searchHome = searchTitle.substringBefore(" vs ").trimAndClean()
-        val searchAway = searchTitle.substringAfter(" vs ").trimAndClean()
+        val searchTitle = title.replace(" vs. ", " vs ").replace(" v ", " vs ")
+        val searchHome = searchTitle.substringBefore(" vs ").trim()
+        val searchAway = searchTitle.substringAfterLast(" vs ").trim()
+
         return this.matches.firstOrNull { match ->
-            val title = match.title.replace(" vs. ", " vs ")
-            val home = match.teams?.home?.name?.trimAndClean()
-                ?: title.substringBefore(" vs ").trimAndClean()
-            val away = match.teams?.away?.name?.trimAndClean()
-                ?: title.substringAfter(" vs ").trimAndClean()
-            fun checkMatch(team: String, search: String): Boolean {
-                return when {
-                    team.containsNoSpaces(search) || search.containsNoSpaces(team) -> true
-                    team.containsAnyWordIgnoreCase(search) || search.containsAnyWordIgnoreCase(team) -> true
-                    else -> false
-                }
-            }
-            val directMatch = checkMatch(home, searchHome) && checkMatch(away, searchAway)
-            val reverseMatch = checkMatch(home, searchAway) && checkMatch(away, searchHome)
-            directMatch || reverseMatch
+            val apiTitle = match.title.replace(" vs. ", " vs ").replace(" v ", " vs ")
+            val home = match.teams?.home?.name ?: apiTitle.substringBefore(" vs ").trim()
+            val away = match.teams?.away?.name ?: apiTitle.substringAfterLast(" vs ").trim()
+
+            (teamMatches(home, searchHome) && teamMatches(away, searchAway)) ||
+            (teamMatches(home, searchAway) && teamMatches(away, searchHome))
         }?.let {
             val hourFormat = SimpleDateFormat("HH:mm", Locale.US)
             val hourString = hourFormat.format(Date(it.date))
-            val hour = transformHourToLocal(hourString);
+            val hour = transformHourToLocal(hourString)
             MatchId(it.title, it.poster?.replaceFirst("^/".toRegex(), "$mainUrl/"), hour)
-        } ?: MatchId(searchHome+" vs "+searchAway)
+        } ?: MatchId(searchHome.lowercase() + " vs " + searchAway.lowercase())
     }
 }
 
 val defaultPoster: String =
-    "data:image/webp;base64,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"
+    "data:image/webp;base64,UklGRqAXAABXRUJQVlA4WAoAAAAQAAAAuwEA+QAAQUxQSHYCAAAFuQpE9D8sviVJsiRJsi2oj+v/ri/rm6p7PuuT4xPXG31DxARMwL/+7S//Nv9h/yCCluUZNi2I8M9k/+xvM8ZcdzDZI8jkmmtEMsacs3Z5ky05I8Jucy5rMT2CibUsZ7dgDGM+L+wRhOVzhOhmmOuOR9lByNEYxprrMvQIhizXFiGyZhfs0rzHdskZaTHMOffp2CPomC7kDDkHc12THU8x03INQsYaTGveZWuCFsFgzjXZ0UPYkWk5g2gwWGsaZA8hg6a1IIjBsubLeYsd95YFsRjWMu1y9gjmc5O1EEuz1po/3iPoi4+ttTSfl8m+eZCZLB9jzcfpaUw+tlyXadCeRoMmy8fFiHmbMWJBQ3Mu73M5Gxqa99oQ5t4eSLsJg27zQrsNOnZDj2M+d/zxHkdfXEdfvdQR+xT2NMI+5Q+HnsbQp5//f/7/+f/n/5//f/7/+f/n/5//f/7/+f/n/5//f/7/+f/n/5//f/7/+f/n/5+3w95G7E/6NPQ2Rp9G7NNjjfnDHse++twXexx9saNjt7zQ3TqG3NcDWTdDWLenurCwLu2BtMvCgkaMHseI0XxssmA9jQXLtFvLx+xpZD6ukY9Npqcxmebz0lrLH/cI9s19rTVLI7Qm64s9gr5YpjWMRtC0fJm3uMt1TYMRpGkt65gewnQsa00zWOQMWibYQwgmazDnIFqQtbzLtQzWmBDk2jI9h8ma62DOkDP37OgR7Mjc5xxGS+TssrzHdZlzzJrIpeXahD2CMO1i7WIsIeSadznXYRhHhI5rQ49gaMd1GLspWjmb1sgeQUZrmnNrbIjDmZZ3uWbOg0lErrlmegSTXcx1jBlWUDggBBUAABBdAJ0BKrwB+gA+KRSIQyGhIRCq1DwYAoS0t34+S+xmYZbS8rafu/Pguj+X+mD3a/6r0Z698wjyH9X/zX91/JH50/5T/D/zP+QfG/8h/7v+y/AB+nn62dcb+l/8f1AfzP+4fsN7pP+d/Yv3Efrn+w3+j+QD+j/5f//+t37C37newJ+33pqftP8HX9X/5f7oe0P/+/YA///A59Oe3f+efjx+3fsP+JfKv0X8bP65/r99e1L/h/1c+rf179qPyF5y/S16gX4n/F/7F+T/93/anjbZpPUI9Qfk3+I/vX9m/439+9Fj+U9HPq7/t/cA/in8m/xX5Tfv/9Af5HxLPG/YA/jf9g/0f+U/cP/M/Sl/Ef67++flL7TfyX+1f8r/B/5P/pf5f7A/45/OP8t/bP8p/5f8v////T9xXr1/d72I/1n/4/5/hNyMVIUKtn1xP+tUe7q9a6kMZH6zdezYo93V611C7HDNLG0fJ8EmNupCklMJ+mTwkrvJy//z9a6j68xfmXd//nvP1rqQpJSAMf8SEpV4tvdgo3UhSSl0pwbqFIdaEHkq20eKVqv6wNe4fQbBBRL4lvPpUqriO+Epfz4mBvW6KMofrNJbQPt6FwpdRUB5hkH3sut3PMsGnY6OEvv8iaSOiIHQqLa11sKV0gYYUUZI4kGcc25G5icuJoHB6NhYzZM6CtknjY/uMWvKlz72ZF2rqHAJbHRLvVVtwQLrJ2U7UoFTAkGIS0+bSAOh+/ycl54oe6XJ2+GnlI/HtlNMk8VXGak1ZBPOs/T5UorYDRd7UW1fAlN87eiTCiWjNFkbOr96+M78TuQdPSpcMYkS7M7+1XdlnNzb8sufALjLE/5VgNUBvmczqVDTpWOsgtxMvP1rqQpJIFkf2JVBI3UhSSl/P/m+Tp4zFFZ0puIUkpfz/59cuua37phXSj3dXrXUhIdnMkCxWeKY26kKSUvy2F0yS9T+Rh1xCklL+f/N3mNl0Cih82dMB50dBM2MFK1FEAD++5SS//mRf9Uv7j83H/6Faq99VX9hikjKF/JpyNveFKeMZWgp2K/hRT6U1Ba3MRGU"
 
 class MatchesResult : ArrayList<APIMatch>()
 class SourceResult : ArrayList<SourceInfo>()
