@@ -1,13 +1,13 @@
 version = 1
 
 cloudstream {
-    language = "en"
+    language = "es"
     authors = listOf("redblacker8")
     status = 1
     tvTypes = listOf(
+        "Documentary",
         "Movie",
-        "TvSeries",
     )
 
-    iconUrl = "https://www.area-documental.com/Favicons/favicon-96x96.png"
+    iconUrl = "https://www.documaniatv.com/hotlink-ok/favicon-96x96.png"
 }
