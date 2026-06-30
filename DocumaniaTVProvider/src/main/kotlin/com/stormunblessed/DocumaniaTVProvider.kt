@@ -72,7 +72,7 @@ class DocumaniaTVProvider : MainAPI() {
             || document.selectFirst("a[rel=next]") != null
             || document.selectFirst("ul.pagination.pagination-arrows li:last-child a") != null
         return newHomePageResponse(
-            list = HomePageList(request.name, items, isHorizontalImages = false),
+            list = HomePageList(request.name, items, isHorizontalImages = true),
             hasNext = hasNext
         )
     }
@@ -109,16 +109,16 @@ class DocumaniaTVProvider : MainAPI() {
 
         if (isSeriesPage) {
             val seriesTitle = document.selectFirst("h1")?.text()?.trim()
-                ?: url.substringAfter("/documentales/").substringBefore("/").replace("-", " ").capitalize()
+                ?: url.substringAfter("/documentales/").substringBefore("/").replace("-", " ").replaceFirstChar { it.uppercase() }
             val poster = document.selectFirst("img")?.let { img ->
                 val src = img.attr("src").ifEmpty { img.attr("data-src") }
                 if (src.isNotEmpty()) getImageUrl(src) else null
             }
-            val episodes = document.select("a[href*='video_']").mapIndexedNotNull { index, element ->
+            val seenUrls = mutableSetOf<String>()
+            val episodes = document.select("h3 a[href*='video_']").reversed().mapIndexedNotNull { index, element ->
                 val href = element.attr("abs:href")
-                if (href.isEmpty()) return@mapIndexedNotNull null
-                val epTitle = element.selectFirst("h3")?.text()?.trim()
-                    ?: element.attr("title").ifEmpty { "Episode ${index + 1}" }
+                if (href.isEmpty() || !seenUrls.add(href)) return@mapIndexedNotNull null
+                val epTitle = element.text().trim().ifEmpty { "Episode ${index + 1}" }
                 val epVideoId = href.substringAfter("video_").substringBefore(".")
                 val epPoster = "$mainUrl/uploads/thumbs/$epVideoId-1.webp"
                 newEpisode(href) {
