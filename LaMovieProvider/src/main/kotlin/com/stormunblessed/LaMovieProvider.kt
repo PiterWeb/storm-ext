@@ -14,7 +14,7 @@ import kotlinx.coroutines.launch
 class LaMovieProvider : MainAPI() {
     override var mainUrl = "https://lamovie.org"
     override var name = "LaMovie"
-    override var lang = "es"
+    override var lang = "mx"
     override val hasMainPage = true
     override val hasChromecastSupport = true
     override val hasDownloadSupport = true
@@ -73,7 +73,7 @@ class LaMovieProvider : MainAPI() {
     }
 
     override suspend fun search(query: String): List<SearchResponse> {
-        val res = app.get("$apiUrl/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&page=1")
+        val res = app.get("$apiUrl/search?q=${java.net.URLEncoder.encode(query, "UTF-8")}&postType=any&postsPerPage=26")
             .parsedSafe<LaMovieListingResponse>()
         return res?.data?.posts?.mapNotNull { it.toSearchResult() } ?: emptyList()
     }
