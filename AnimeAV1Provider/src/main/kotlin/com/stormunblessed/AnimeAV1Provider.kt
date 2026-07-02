@@ -49,7 +49,7 @@ class AnimeAV1Provider : MainAPI() {
         items.add(
             HomePageList(
                 "Últimos episodios",
-                app.get(mainUrl).document.select("main section div.grid.md:grid-cols-3 article.group/item").mapNotNull {
+                app.get(mainUrl).document.select("main section div.grid.md\\:grid-cols-3 article.group\\/item").mapNotNull {
                     val title = it.selectFirst("header div")?.text() ?: return@mapNotNull null
                     val poster = it.selectFirst("div figure img")?.attr("src") ?: return@mapNotNull null
                     val epRegex = Regex("(/(\\d+)$)")
@@ -65,7 +65,7 @@ class AnimeAV1Provider : MainAPI() {
 
         urls.amap { (url, name) ->
             val doc = app.get(url).document
-            val home = doc.select("main section div.grid article.group/item").mapNotNull {
+            val home = doc.select("main section div.grid article.group\\/item").mapNotNull {
                 val title = it.selectFirst("header h3")?.text() ?: return@mapNotNull null
                 val poster = it.selectFirst("div figure img")?.attr("src") ?: return@mapNotNull null
                 newAnimeSearchResponse(
@@ -108,7 +108,7 @@ class AnimeAV1Provider : MainAPI() {
 
     override suspend fun search(query: String): List<SearchResponse> {
         val doc = app.get("$mainUrl/catalogo?search=$query").document
-        val sss = doc.select("main section div.grid article.group/item").map { ll ->
+        val sss = doc.select("main section div.grid article.group\\/item").map { ll ->
             val title = ll.selectFirst("header h3")?.text() ?: ""
             val image = ll.selectFirst("div figure img")?.attr("src") ?: ""
             val href = ll.selectFirst("a")?.attr("href") ?: ""
@@ -137,7 +137,7 @@ class AnimeAV1Provider : MainAPI() {
 
         val epRegex = Regex("(/(\\d+)$)")
 
-        doc.select("main section article.group/item").forEach { episodeElement ->
+        doc.select("main section article.group\\/item").forEach { episodeElement ->
             val link = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
             val epNum = epRegex.find(link)?.toString()?.toIntOrNull() ?: return@forEach
 
