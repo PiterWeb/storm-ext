@@ -137,8 +137,9 @@ class AnimeAV1Provider : MainAPI() {
 
         val epRegex = Regex("(/(\\d+)$)")
 
-        doc.select("main section article").forEach { episodeElement ->
-            val link = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
+        doc.select("main section.from-mute article").forEach { episodeElement ->
+            var link = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
+            link = "${mainUrl}${link}"
             val epNum = epRegex.find(link)?.destructured?.component1()?.toIntOrNull() ?: return@forEach
 
             episodes.add(
