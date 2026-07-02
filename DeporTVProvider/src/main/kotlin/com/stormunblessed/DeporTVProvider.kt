@@ -152,11 +152,6 @@ class DeporTVProvider : MainAPI() {
                 "https://pltvhd.com/diaries.json"
             ),
             Site(
-                SiteKey.STREAMTP,
-                "https://streamtpday1.xyz",
-                "/wc.json?_=${Date().time}"
-            ),
-            Site(
                 SiteKey.STREAMXX,
                 "https://streamx996.one",
                 "/json/agenda550.json?nocache=${Date().time}",
@@ -166,6 +161,11 @@ class DeporTVProvider : MainAPI() {
                 "https://angulismotv.pages.dev",
                 "https://raw.githubusercontent.com/Aguus467/test/refs/heads/main/json.json",
             ),
+            // Site(
+            //     SiteKey.STREAMTP,
+            //     "https://streamtpday1.xyz",
+            //     "/wc.json?_=${Date().time}"
+            // ),
             // Site(
             //     SiteKey.CANALESDEPORTIVOS,
             //     "https://canalesdeportivos.net",
