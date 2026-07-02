@@ -182,7 +182,7 @@ class AnimeAV1Provider : MainAPI() {
             if (script.data().contains("embeds:{")
             ) {
                 val serversRegex = Regex("embeds:(\\{(?:DUB|SUB):\\[.*?]\\})")
-                val serversPlain = serversRegex.find(script.data())?.destructured?.component1() ?: ""
+                val serversPlain = serversRegex.find(script.data())?.toString() ?: return@amap
                 val json = parseJson<MainServers>(serversPlain)
                 json.sub?.amap {
                     val url = it.url
