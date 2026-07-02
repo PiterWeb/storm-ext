@@ -139,7 +139,7 @@ class AnimeAV1Provider : MainAPI() {
 
         doc.select("main section article").forEach { episodeElement ->
             val link = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
-            val epNum = epRegex.find(link)?.toString()?.toIntOrNull() ?: return@forEach
+            val epNum = epRegex.find(link)?.destructured?.component1()?.toIntOrNull() ?: return@forEach
 
             episodes.add(
                 newEpisode(
@@ -182,16 +182,16 @@ class AnimeAV1Provider : MainAPI() {
             if (script.data().contains("embeds:{")
             ) {
                 val serversRegex = Regex("embeds:(\\{(?:DUB|SUB):\\[.*?]\\})")
-                val serversPlain = serversRegex.find(script.data())?.toString() ?: return@amap
+                val serversPlain = serversRegex.find(script.data())?.destructured?.component1() ?: return@amap
                 val json = parseJson<MainServers>(serversPlain)
                 json.sub?.amap {
                     val url = it.url
                     loadExtractor(url, data, subtitleCallback, callback)
                 }
-//                json.dub?.amap {
-//                    val url = it.url
-//                    loadExtractor(url, data, subtitleCallback, callback)
-//                }
+                json.dub?.amap {
+                    val url = it.url
+                    loadExtractor(url, data, subtitleCallback, callback)
+                }
             }
         }
         return true
