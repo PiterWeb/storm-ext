@@ -1,8 +1,10 @@
 package com.stormunblessed
 
 import com.fasterxml.jackson.annotation.JsonProperty
+import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
+import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
 import com.lagradost.cloudstream3.utils.loadExtractor
 import java.util.*
@@ -135,25 +137,28 @@ class AnimeAV1Provider : MainAPI() {
         val genre = doc.select("main article header a.btn-line-o")
             .map { it?.text()?.trim().toString() }
 
-        val epRegex = Regex("(/(\\d+)$)")
+        val epRegex = Regex("/(\\d+)$")
 
         doc.select("main section.from-mute article").forEach { episodeElement ->
-            var link = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
-            link = "${mainUrl}${link}"
+            val relativeLink = episodeElement.selectFirst("a")?.attr("href") ?: return@forEach
+
+            val link = mainUrl.plus(relativeLink)
             val epNum = epRegex.find(link)?.destructured?.component1()?.toIntOrNull() ?: return@forEach
+            val posterUrl = poster.replace("covers", "screenshots").replace(".jpg", "/$epNum.jpg")
 
             episodes.add(
                 newEpisode(
                     link,
                 ){
+                    this.posterUrl = posterUrl
                     this.episode = epNum
                 }
             )
         }
 
         return newAnimeLoadResponse(title, url, getType(type)) {
-            posterUrl = fixUrl(poster)
-            addEpisodes(DubStatus.Subbed, episodes.reversed())
+            posterUrl = poster
+            addEpisodes(DubStatus.Subbed, episodes)
             showStatus = status
             plot = description
             tags = genre
@@ -161,14 +166,16 @@ class AnimeAV1Provider : MainAPI() {
     }
 
     data class MainServers(
-            @JsonProperty("SUB")
+            @JsonProperty("SUB", required = false)
             val sub: List<Sub>?,
-            @JsonProperty("DUB")
+            @JsonProperty("DUB", required = false)
             val dub: List<Sub>?
     )
 
     data class Sub(
+            @JsonProperty("server")
             val server: String,
+            @JsonProperty("url")
             val url: String
     )
 
@@ -178,13 +185,23 @@ class AnimeAV1Provider : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
+        Log.i("AnimeAV1", "Load links")
+        val serversRegex = Regex("embeds:(\\{(?:DUB|SUB):\\[.*?]\\})")
 
         app.get(data).document.select("script").amap { script ->
             if (script.data().contains("embeds:{")
             ) {
-                val serversRegex = Regex("embeds:(\\{(?:DUB|SUB):\\[.*?]\\})")
-                val serversPlain = serversRegex.find(script.data())?.destructured?.component1() ?: return@amap
+                var serversPlain = serversRegex.find(script.data())?.destructured?.component1() ?: return@amap
+                serversPlain = serversPlain
+                    .replace("SUB", "\"SUB\"")
+                    .replace("DUB", "\"DUB\"")
+                    .replace("url", "\"url\"")
+                    .replace("server", "\"server\"")
+
+                Log.i("AnimeAV1", serversPlain)
                 val json = parseJson<MainServers>(serversPlain)
+                Log.i("AnimeAV1", json.toJson())
+
                 json.sub?.amap {
                     val url = it.url
                     loadExtractor(url, data, subtitleCallback, callback)
