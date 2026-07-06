@@ -4,9 +4,12 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.AppUtils.parseJson
-import com.lagradost.cloudstream3.utils.AppUtils.toJson
 import com.lagradost.cloudstream3.utils.ExtractorLink
+import com.lagradost.cloudstream3.utils.ExtractorLinkType
+import com.lagradost.cloudstream3.utils.M3u8Helper.Companion.generateM3u8
+import com.lagradost.cloudstream3.utils.getQualityFromName
 import com.lagradost.cloudstream3.utils.loadExtractor
+import com.lagradost.cloudstream3.utils.newExtractorLink
 import java.util.*
 import kotlin.collections.map
 
@@ -165,14 +168,30 @@ class AnimeAV1Provider : MainAPI() {
         }
     }
 
+    private suspend fun streamClean(
+        name: String,
+        url: String,
+        referer: String,
+        quality: String?,
+        callback: (ExtractorLink) -> Unit,
+        m3u8: Boolean
+    ): Boolean {
+        callback(
+            newExtractorLink(name, name, url, ExtractorLinkType.M3U8){
+                this.referer = referer
+                this.quality = getQualityFromName(quality)
+            }
+        )
+        return true
+    }
     data class MainServers(
-            @JsonProperty("SUB", required = false)
-            val sub: List<Sub>?,
-            @JsonProperty("DUB", required = false)
-            val dub: List<Sub>?
+        @JsonProperty("SUB", required = false)
+            val sub: List<Server>?,
+        @JsonProperty("DUB", required = false)
+            val dub: List<Server>?
     )
 
-    data class Sub(
+    data class Server(
             @JsonProperty("server")
             val server: String,
             @JsonProperty("url")
@@ -198,18 +217,40 @@ class AnimeAV1Provider : MainAPI() {
                     .replace("url", "\"url\"")
                     .replace("server", "\"server\"")
 
-                Log.i("AnimeAV1", serversPlain)
                 val json = parseJson<MainServers>(serversPlain)
-                Log.i("AnimeAV1", json.toJson())
 
-                json.sub?.amap {
+                val extractor = suspend { it: Server ->
                     val url = it.url
-                    loadExtractor(url, data, subtitleCallback, callback)
+
+                    if (url.contains("player.zilla-networks.com")) {
+
+                        val m3u8Url = url.replace("/play/", "/m3u8/")
+                        Log.i("AnimeAV1", "PlayerZilla: $m3u8Url")
+
+                        val namePlayerZilla = "PlayerZilla"
+
+                        generateM3u8(
+                            namePlayerZilla,
+                            m3u8Url,
+                            mainUrl,
+                        ).forEach { playerZillaUrl ->
+                            streamClean(
+                                namePlayerZilla,
+                                playerZillaUrl.url,
+                                mainUrl,
+                                playerZillaUrl.quality.toString(),
+                                callback,
+                                true
+                            )
+                        }
+                    } else {
+                        loadExtractor(url, data, subtitleCallback, callback)
+                    }
                 }
-                json.dub?.amap {
-                    val url = it.url
-                    loadExtractor(url, data, subtitleCallback, callback)
-                }
+
+                json.sub?.amap(extractor )
+
+                json.dub?.amap(extractor)
             }
         }
         return true
